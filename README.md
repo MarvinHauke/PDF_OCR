@@ -102,13 +102,14 @@ PDF_OCR/
 
 ## 📸 Example
 
-![Example](img/preview.png)
+![Example](img/example.png)
 
 ---
 
 ## 🔧 TODO
 
 - [ ] Smarter heading classification (maybe ML-based)
+- [ ] checkout spaCy for ocr_processing
 - [ ] Optional output to .txt or .json
 - [ ] Support for multi-column PDF layouts
 - [ ] GUI wrapper?
