@@ -102,7 +102,6 @@ PDF_OCR/
 
 ## 📸 Example
 
-_Imagine a scanned document with red-highlighted headings and black body text_
 ![Example](img/preview.png)
 
 ---
