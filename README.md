@@ -1,4 +1,4 @@
-# 🧠 PDF_OCR — Headings-Aware OCR PDF Annotator
+# 📖PDF_OCR — Headings-Aware OCR PDF Annotator
 
 Turn scanned or typewritten PDFs into searchable, annotated documents with intelligent heading detection — all in Python.
 
