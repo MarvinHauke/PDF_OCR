@@ -23,7 +23,7 @@ def run(
         pdf_path=pdf_path,
         temp_dir=Path("temp_pages"),
         output_dir=Path("output_pages"),
-        output_pdf=Path("Output_dir/annotated_output.pdf"),
+        output_pdf=Path("outputs/annotated_output.pdf"),
     )
 
 
