@@ -6,6 +6,11 @@ __pycache__/
 # Direnv
 .envrc
 
+# Outputs
+Output_dir/*
+output_pages/*
+temp_pages/*
+
 # C extensions
 *.so
 
