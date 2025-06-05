@@ -1,127 +1,151 @@
-# 📖 PDF_OCR — Headings-Aware OCR PDF Annotator
+# Annotated PDF Generator from Scanned Datasheets
 
-Turn scanned or typewritten PDFs into searchable, annotated documents with intelligent heading detection — all in Python.
+This repository provides a local toolchain to analyze and annotate old scanned datasheets (e.g., service manuals or engineering documents). It uses OCR to extract content like text, headings, tables, and schematics, and overlays annotations on the original pages. The project is divided into two main components:
 
-This project uses OCR (via Tesseract) to extract text from PDFs, detects likely headings, highlights them, and exports a new annotated PDF. It features a clean CLI built with Typer and includes rich progress output and shell autocompletion.
+1. **CLI Pipeline Tool** – Runs end-to-end from PDF input to annotated PDF output.
+2. **Jupyter Notebook** – For visual analysis, OCR tuning, and experimentation.
+
+---
+
+## 📁 Project Structure
+
+```
+PDF_OCR/
+├── cli/                            # CLI entrypoint and Typer logic
+│   └── main.py                     # Typer CLI tool
+├── core/                           # Business logic modules
+│   ├── pdf_utils.py                # PDF to image conversion, PDF writing
+│   ├── ocr_pipeline.py             # OCR execution and annotation
+│   └── toc_generator.py            # TOC generation from OCR output
+├── notebook/                       # Jupyter notebooks for exploration
+│   └── analysis.ipynb              # Interactive OCR and annotation tuning
+├── assets/                         # Sample data and outputs
+├── requirements.txt
+├── README.md
+└── setup.py                        # Optional package setup
+```
 
 ---
 
 ## 🚀 Features
 
-- ✅ OCR with [Tesseract](https://github.com/tesseract-ocr/tesseract)
-- 🧾 Heading detection (ALL CAPS + short text lines)
-- 📄 Annotated and merged PDF output
-- 🌀 Rich CLI with Typer and progress bars via Rich
-- 🐚 Shell autocompletion (zsh/bash/fish supported)
+### CLI Pipeline (Typer)
+
+- Input: scanned PDF (e.g. old datasheet)
+- Output: annotated searchable PDF and JSON-formatted table of contents
+- OCR engines supported:
+
+  - pytesseract
+  - easyocr
+  - keras_ocr
+
+- Modular language support (default: English)
+- Retains original page images with overlay annotations
+- Uses `Typer` for CLI with autocomplete and help
+- Displays progress bars during processing
+
+### Jupyter Notebook
+
+- PDF-to-image conversion
+- OCR visualization using:
+
+  - spaCy (for heading/entity parsing)
+  - pytesseract, easyocr, keras_ocr
+
+- Visual overlays of text regions
+- Adjustable OCR thresholds and parameters
+- Non-destructive preview of annotations
 
 ---
 
-## 📦 Setup
+## ⚖️ Installation
 
-### 1. Prerequisites
+### Prerequisites
 
-Make sure you have the following installed:
+- Python >= 3.8
+- Tesseract OCR installed ([https://github.com/tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract))
+- Poppler for `pdf2image`
 
-- Python ≥ 3.11
-- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) (`brew install tesseract` on macOS)
-- [uv](https://github.com/astral-sh/uv) — fast Python package manager
-- [direnv](https://direnv.net/) — autoenv loader for shell
-
-### 2. Environment Setup
+### Install
 
 ```bash
-# Create a new Python virtual environment using uv
-uv venv .venv
+# Clone repo
+$ git clone https://github.com/yourusername/annotated-datasheets.git
+$ cd annotated-datasheets
 
-# Write this to .envrc for direnv to auto-activate your venv
-echo 'source .venv/bin/activate' > .envrc
-direnv allow
+# Create virtual environment
+$ python -m venv .venv
+$ source .venv/bin/activate
+
+# Install dependencies
+$ pip install -r requirements.txt
+
+# Download spaCy model
+$ python -m spacy download en_core_web_sm
 ```
 
-### 3. Install Dependencies
+---
 
-You can install everything with:
+## 🔍 Usage
+
+### 1. CLI Pipeline
 
 ```bash
-uv pip install pdf2image pytesseract reportlab PyPDF2 typer rich
+# Run annotation pipeline
+$ python cli/main.py annotate \
+    --input input/datasheet.pdf \
+    --output output/annotated.pdf \
+    --toc-json output/toc.json \
+    --language en
 ```
 
-Or if you're using a `requirements.txt`, do:
+Arguments:
+
+- `--input`: path to scanned PDF
+- `--output`: path to output annotated PDF
+- `--toc-json`: path to output JSON TOC file
+- `--language`: language code (default: en)
+
+### 2. Jupyter Notebook
 
 ```bash
-uv pip install -r requirements.txt
+# Start Jupyter Lab or Notebook
+$ jupyter lab
 ```
 
----
+Open `notebook/analysis.ipynb` and follow these steps:
 
-## ⚙️ Autocompletion (zsh)
-
-To enable shell autocompletion:
-
-```bash
-eval "$(python main.py --install-completion zsh)"
-```
-
-For persistence, add that line to your `~/.zshrc`.
+1. Convert PDF pages to images
+2. Run OCR engines and tweak thresholds
+3. Display bounding boxes and recognized text
+4. Export updated annotations if needed
 
 ---
 
-## 🧪 Usage
+## ⚙️ Future Improvements
 
-Once set up, run the script with:
-
-```bash
-python main.py run /path/to/your/file.pdf
-```
-
-What it does:
-
-1. Converts each PDF page into an image.
-2. Runs OCR on each page with `pytesseract`.
-3. Detects headings based on heuristics (e.g., all caps short text).
-4. Annotates the image (red for headings, black for body text).
-5. Merges everything back into a single PDF.
-
-📄 Output: `annotated_output.pdf` in the current directory.
-
----
-
-## 🗂️ Project Structure
-
-```
-PDF_OCR/
-├── main.py            # Entry point
-├── cli.py             # Typer CLI logic
-├── ocr_processor.py   # OCR + annotation logic
-├── .envrc             # Direnv activation
-├── README.md          # You are here
-└── annotated_output.pdf  # Output after running the script
-```
-
----
-
-## 📸 Example
-
-![Example](img/example.png)
-
----
-
-## 🔧 TODO
-
-- [ ] Smarter heading classification (maybe ML-based)
-- [ ] checkout spaCy for ocr_processing
-- [ ] Optional output to .txt or .json
-- [ ] Support for multi-column PDF layouts
-- [ ] GUI wrapper?
-
----
-
-## 🧑‍💻 Author
-
-Built by **Marvin Hauke** — with ❤️, `typer`, `rich`, and `pytesseract`.
+- Multilingual support (pluggable OCR language models)
+- Table and schematic detection improvements
+- Better layout detection and heading classification
 
 ---
 
 ## 📄 License
 
-MIT License — free to use, modify, and distribute.
+MIT License. See `LICENSE` for details.
+
+---
+
+## 🌟 Example Output (TOC JSON)
+
+```json
+[
+  { "page": 1, "title": "General Description" },
+  { "page": 3, "title": "Electrical Characteristics" },
+  { "page": 5, "title": "Schematic Diagram" }
+]
+```
+
+---
+
+Happy annotating! 📔🔍📏
