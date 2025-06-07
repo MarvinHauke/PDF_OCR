@@ -22,4 +22,5 @@ dependencies = [
     "spacy>=3.8.7",
     "spacy-layout>=0.0.12",
     "typer>=0.16.0",
+    "ultralytics>=8.3.151",
 ]
