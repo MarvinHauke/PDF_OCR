@@ -9,11 +9,13 @@ __pycache__/
 # Direnv
 .envrc
 
+# Training_data
+training_project/training_data/*
+
 # Outputs
 tmp/*
-outputs/*
-output_pages/*
-temp_pages/*
+output/*
+
 
 # C extensions
 *.so

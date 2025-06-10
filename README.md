@@ -18,7 +18,7 @@ In general it shall improve the understanding of complex curcuits.
 [OcrmyPDF ](https://github.com/ocrmypdf/OCRmyPDF)
 
 ```Bash
-# use this commmand if you just want to annotate your PDF file
+# use this commmand if you just want to annotate your PDF file (needs unpaper -> install with brew)
 OcrmyPdf input.pdf output.pdf --deskew --clean --rotate-pages
 ```
 
@@ -31,8 +31,13 @@ label-studio start
 
 TODOs:
 
-- [ ] label data with label-studio
-- [ ] train a yolo model on the data
+- [x] label data with label-studio
+- [x] train a yolo model on the data --> take a look at training_data/
+- [ ] generate more training data automaticaly -> use docling for datasheet conversion.
+- [ ] checkout imagemagic for croping images
+- [ ] scrape your kiCAD database library for training data.
+- [ ] Build a autolabeling image pipeline from the current trained model
+- [ ] Generate a Github Project out of this Repository
 
 ## 📄 License
 
