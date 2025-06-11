@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "./venv/bin/python",
+  "python.autoComplete.extraPaths": ["./src", "./config"],
+  "python.analysis.extraPaths": ["./src", "./config"],
+  "files.associations": {
+    "*.yaml": "yaml"
+  },
+  "yaml.schemas": {
+    "./config/schema.json": ["config/*.yaml"]
+  },
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.formatting.provider": "black"
+}

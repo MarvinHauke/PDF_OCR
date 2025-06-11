@@ -1,25 +1,96 @@
 # config/config.yaml
-# YOLO Training Configuration
+# YOLO Training Configuration with MPS Optimizations for MacBook
 
 # Model configuration
 model:
-  architecture: "yolo11n.pt"
+  architecture: "yolo11l.pt"
   use_best_weights: false
 
 # Training parameters
 training:
   run_name: "run"
   image_size: 640
-  batch_size: 16
+  batch_size: -1 # Auto-adjust for MPS (recommended for Apple Silicon)
   epochs: 100
-  workers: 8
-  device: "mps" # options: "cuda", "mps", "cpu"
+  workers: 0 # Set to 0 for MPS to avoid multiprocessing issues
+  device: "mps" # Apple Silicon Metal Performance Shaders
   patience: 50
   save_period: 10
+
+  # MPS-specific optimizations
+  amp: true # Automatic Mixed Precision - helps with MPS performance
+  half: false # Don't use half precision with MPS (can cause issues)
+  cache: false # Disable dataset caching for better memory management
+  multi_scale: false # Disable for consistent MPS performance
+  deterministic: false # Allow non-deterministic for better MPS performance
+
+  # Optimizer settings (optimized for MPS)
+  optimizer: "AdamW" # AdamW generally works better with MPS than SGD
+  lr0: 0.01 # Initial learning rate
+  lrf: 0.01 # Final learning rate (lr0 * lrf)
+  momentum: 0.937 # SGD momentum/Adam beta1
+  weight_decay: 0.0005 # Optimizer weight decay
+  warmup_epochs: 3.0 # Warmup epochs
+  warmup_momentum: 0.8 # Warmup initial momentum
+  warmup_bias_lr: 0.1 # Warmup initial bias lr
+
+  # Data augmentation (reduced for better MPS performance)
+  hsv_h: 0.015 # Image HSV-Hue augmentation (fraction)
+  hsv_s: 0.7 # Image HSV-Saturation augmentation (fraction)
+  hsv_v: 0.4 # Image HSV-Value augmentation (fraction)
+  degrees: 0.0 # Image rotation (+/- deg)
+  translate: 0.1 # Image translation (+/- fraction)
+  scale: 0.5 # Image scale (+/- gain)
+  shear: 0.0 # Image shear (+/- deg)
+  perspective: 0.0 # Image perspective (+/- fraction), range 0-0.001
+  flipud: 0.0 # Image flip up-down (probability)
+  fliplr: 0.5 # Image flip left-right (probability)
+  mosaic: 1.0 # Image mosaic (probability)
+  mixup: 0.0 # Image mixup (probability)
+  copy_paste: 0.0 # Segment copy-paste (probability)
+
+# MPS Performance settings
+mps:
+  # Memory management
+  max_memory_fraction: 0.8 # Maximum fraction of GPU memory to use
+  empty_cache_frequency: 10 # Empty cache every N epochs
+
+  # Performance tuning
+  torch_compile: false # PyTorch compilation (experimental for MPS)
+  sync_bn: false # Use SyncBatchNorm (not needed for single GPU)
+
+  # MPS-specific workarounds
+  use_cpu_fallback: true # Fallback to CPU for unsupported operations
+  pin_memory: false # Disable pin memory for MPS
+  persistent_workers: false # Disable for MPS compatibility
 
 # Prediction configuration
 prediction:
   confidence_threshold: 0.25
+  iou_threshold: 0.7 # NMS IoU threshold
+  max_detections: 300 # Maximum number of detections per image
+
+  # MPS inference optimizations
+  half_precision: false # Disable half precision for MPS inference
+  augment: false # TTA (Test Time Augmentation)
+  agnostic_nms: false # Class-agnostic NMS
+
+# Validation settings
+validation:
+  split: "val" # Dataset split for validation
+  save_json: false # Save results to JSON file
+  save_hybrid: false # Save hybrid version of labels
+  single_cls: false # Train as single-class dataset
+  rect: false # Rectangular training (faster but may reduce accuracy)
+
+# Logging and visualization
+logging:
+  verbose: true # Verbose output
+  plots: true # Save training plots
+  save_period: -1 # Save checkpoint every N epochs (-1 to disable)
+  tensorboard: false # Use TensorBoard logging
+  clearml: false # Use ClearML logging
+  comet: false # Use Comet logging
 
 # Paths (relative to project root)
 paths:
@@ -27,3 +98,9 @@ paths:
   dataset_yaml: "training_data/data.yaml"
   project: "training_data/runs"
   output: "../output"
+
+# Environment-specific configs
+environment:
+  profile: false # Profile code execution
+  debug: false # Debug mode
+  seed: 0 # Random seed for reproducibility

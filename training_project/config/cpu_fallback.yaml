@@ -1,0 +1,28 @@
+# config/cpu_fallback.yaml
+# Safe configuration with CPU as primary, MPS as fallback
+
+model:
+  architecture: "yolo11n.pt"
+  use_best_weights: false
+
+training:
+  run_name: "cpu_safe"
+  image_size: 640
+  batch_size: 16
+  epochs: 100
+  workers: 4 # Can use more workers with CPU
+  device: "cpu" # Start with CPU for stability
+  patience: 50
+  save_period: 10
+
+  amp: false # Disable AMP for CPU
+  half: false
+  cache: true # Can cache with CPU
+  multi_scale: true # More augmentation with CPU
+  deterministic: true
+
+paths:
+  training_data: "training_data"
+  dataset_yaml: "training_data/data.yaml"
+  project: "training_data/runs"
+  output: "../output"

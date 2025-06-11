@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "YOLO Training Configuration",
+  "type": "object",
+  "properties": {
+    "model": {
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "type": "string",
+          "enum": [
+            "yolo11n.pt",
+            "yolo11s.pt",
+            "yolo11m.pt",
+            "yolo11l.pt",
+            "yolo11x.pt"
+          ],
+          "description": "YOLO model architecture"
+        },
+        "use_best_weights": {
+          "type": "boolean",
+          "description": "Use best.pt instead of last.pt"
+        }
+      }
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "device": {
+          "type": "string",
+          "enum": ["cpu", "mps", "cuda", "auto"],
+          "description": "Training device"
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": -1,
+          "description": "Batch size (-1 for auto)"
+        },
+        "epochs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of training epochs"
+        },
+        "workers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16,
+          "description": "Number of dataloader workers"
+        },
+        "optimizer": {
+          "type": "string",
+          "enum": ["SGD", "Adam", "AdamW"],
+          "description": "Optimizer type"
+        }
+      }
+    },
+    "mps": {
+      "type": "object",
+      "properties": {
+        "max_memory_fraction": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "description": "Maximum GPU memory fraction"
+        },
+        "empty_cache_frequency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cache clearing frequency (epochs)"
+        },
+        "use_cpu_fallback": {
+          "type": "boolean",
+          "description": "Enable CPU fallback for unsupported ops"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+# config/mps_optimized.yaml
+# Aggressive MPS optimizations for Apple Silicon
+
+model:
+  architecture: "yolo11n.pt" # Start with nano for testing
+  use_best_weights: false
+
+training:
+  run_name: "mps_optimized"
+  image_size: 640
+  batch_size: -1 # Auto-adjust for optimal MPS memory usage
+  epochs: 100
+  workers: 0 # Critical for MPS stability
+  device: "mps"
+  patience: 50
+  save_period: 10
+
+  # MPS-specific optimizations
+  amp: true # Essential for MPS performance
+  half: false # MPS doesn't support half precision well
+  cache: false # Reduce memory pressure
+  multi_scale: false # More stable training
+  deterministic: false # Allow non-deterministic for better performance
+
+  # Conservative data augmentation for stability
+  hsv_h: 0.01
+  hsv_s: 0.5
+  hsv_v: 0.3
+  degrees: 0.0
+  translate: 0.05
+  scale: 0.3
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 0.8 # Reduced for memory
+  mixup: 0.0
+  copy_paste: 0.0
+
+  # Optimizer optimized for MPS
+  optimizer: "AdamW"
+  lr0: 0.001 # Lower learning rate for stability
+  lrf: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+mps:
+  max_memory_fraction: 0.75
+  empty_cache_frequency: 5 # More frequent cache clearing
+  torch_compile: false
+  sync_bn: false
+  use_cpu_fallback: true
+  pin_memory: false
+  persistent_workers: false
+
+prediction:
+  confidence_threshold: 0.25
+  iou_threshold: 0.7
+  max_detections: 300
+  half_precision: false
+  augment: false
+  agnostic_nms: false
+
+paths:
+  training_data: "training_data"
+  dataset_yaml: "training_data/data.yaml"
+  project: "training_data/runs"
+  output: "../output"

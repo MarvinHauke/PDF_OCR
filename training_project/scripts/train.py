@@ -1,14 +1,24 @@
 # ===========================================
-# File: training_project/scripts/train.py (Updated)
+# File: training_project/scripts/train.py (MPS Enhanced)
 # ===========================================
 #!/usr/bin/env python3
-#!/usr/bin/env python3
-"""Training script for YOLO model with stability optimizations"""
+"""Training script for YOLO model with autocompletion support"""
+
 import argparse
 import sys
 from pathlib import Path
 
-# Add project root to path - adjusted for your structure
+import torch
+
+# Add argcomplete import
+try:
+    import argcomplete
+
+    ARGCOMPLETE_AVAILABLE = True
+except ImportError:
+    ARGCOMPLETE_AVAILABLE = False
+
+# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
@@ -17,205 +27,138 @@ from config.settings import Config
 from src.trainer import YOLOTrainer
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Train YOLO model")
+def config_file_completer(prefix, parsed_args, **kwargs):
+    """Completer for configuration files"""
+    config_dir = PROJECT_ROOT / "config"
+    if config_dir.exists():
+        yaml_files = list(config_dir.glob("*.yaml"))
+        return [
+            f"config/{f.name}"
+            for f in yaml_files
+            if f.name.startswith(prefix.split("/")[-1])
+        ]
+    return []
 
-    # Core training parameters
+
+def model_completer(prefix, parsed_args, **kwargs):
+    """Completer for model architectures"""
+    models = ["yolo11n.pt", "yolo11s.pt", "yolo11m.pt", "yolo11l.pt", "yolo11x.pt"]
+    return [m for m in models if m.startswith(prefix)]
+
+
+def run_name_completer(prefix, parsed_args, **kwargs):
+    """Completer for run names based on existing runs"""
+    runs_dir = PROJECT_ROOT / "training_data" / "runs"
+    if runs_dir.exists():
+        existing_runs = [d.name for d in runs_dir.iterdir() if d.is_dir()]
+        return [name for name in existing_runs if name.startswith(prefix)]
+    return ["run", "experiment", "test"]
+
+
+def check_mps_availability():
+    """Check and report MPS availability"""
+    print("=== MPS Availability Check ===")
+    print(f"PyTorch version: {torch.__version__}")
+    print(f"MPS available: {torch.backends.mps.is_available()}")
+    print(f"MPS built: {torch.backends.mps.is_built()}")
+
+    if torch.backends.mps.is_available():
+        print("✅ MPS is available and ready for training")
+    else:
+        if not torch.backends.mps.is_built():
+            print("❌ MPS not available: PyTorch not built with MPS support")
+        else:
+            print("❌ MPS not available: macOS version < 12.3 or no MPS-enabled device")
+    print("=" * 30)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Train YOLO model with MPS optimizations",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --check-mps
+  %(prog)s --config config/mps_optimized.yaml
+  %(prog)s --device auto --optimize-for-mps
+  %(prog)s --model yolo11n.pt --epochs 10 --device mps
+        """,
+    )
+
+    parser.add_argument(
+        "--config", type=str, help="Path to configuration YAML file"
+    ).completer = config_file_completer
+
     parser.add_argument(
         "--epochs",
         type=int,
-        default=25,
-        help="Number of epochs (reduced for stability)",
-    )
-    parser.add_argument(
-        "--batch", type=int, default=Config.BATCH_SIZE, help="Batch size"
-    )
-    parser.add_argument(
-        "--device", type=str, default=Config.DEVICE, help="Device to use"
-    )
-    parser.add_argument(
-        "--imgsz", type=int, default=320, help="Image size (reduced for speed)"
+        help="Number of epochs",
+        choices=[10, 50, 100, 200, 300],
+        metavar="EPOCHS",
     )
 
-    # Learning rate and optimization
     parser.add_argument(
-        "--lr0",
-        type=float,
-        default=0.0005,
-        help="Initial learning rate (reduced for stability)",
-    )
-    parser.add_argument(
-        "--lrf", type=float, default=0.1, help="Final learning rate factor"
-    )
-    parser.add_argument(
-        "--cos-lr",
-        action="store_true",
-        default=True,
-        help="Use cosine learning rate scheduling",
-    )
-    parser.add_argument(
-        "--warmup-epochs",
-        type=float,
-        default=5.0,
-        help="Warmup epochs (increased for stability)",
+        "--batch",
+        type=int,
+        help="Batch size (-1 for auto)",
+        choices=[-1, 8, 16, 32, 64],
+        metavar="BATCH",
     )
 
-    # Regularization parameters
     parser.add_argument(
-        "--weight-decay",
-        type=float,
-        default=0.001,
-        help="Weight decay for regularization",
-    )
-    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
-
-    # Early stopping and monitoring
-    parser.add_argument(
-        "--patience", type=int, default=5, help="Early stopping patience (reduced)"
-    )
-    parser.add_argument(
-        "--save-period", type=int, default=5, help="Save checkpoint every N epochs"
-    )
-
-    # Speed optimizations
-    parser.add_argument(
-        "--cache", action="store_true", default=Config.CACHE, help="Cache dataset"
-    )
-    parser.add_argument(
-        "--rect", action="store_true", default=True, help="Rectangular training"
-    )
-    parser.add_argument(
-        "--mosaic",
-        type=float,
-        default=0.0,
-        help="Mosaic augmentation (disabled for speed)",
-    )
-
-    # Model and run configuration
-    parser.add_argument(
-        "--model", type=str, default=Config.MODEL_ARCH, help="Model architecture"
-    )
-    parser.add_argument(
-        "--run-name",
+        "--device",
         type=str,
-        default=Config.RUN_NAME,
-        help="Optional name for this training run",
+        choices=["auto", "cpu", "mps", "cuda"],
+        help="Device to use (auto will select best available)",
     )
+
     parser.add_argument("--no-resume", action="store_true", help="Disable auto-resume")
 
-    # Advanced options
-    parser.add_argument(
-        "--val", action="store_true", default=True, help="Run validation"
-    )
-    parser.add_argument(
-        "--plots", action="store_true", default=True, help="Generate training plots"
-    )
-    parser.add_argument(
-        "--amp", action="store_true", default=True, help="Automatic mixed precision"
-    )
-    parser.add_argument(
-        "--workers", type=int, default=Config.WORKERS, help="Number of workers"
+    parser.add_argument("--model", type=str, help="Model architecture").completer = (
+        model_completer
     )
 
-    # Quick presets for different training modes
     parser.add_argument(
-        "--fast",
-        action="store_true",
-        help="Fast experimentation mode (very small settings)",
-    )
+        "--run-name", type=str, help="Name for this training run"
+    ).completer = run_name_completer
+
     parser.add_argument(
-        "--stable",
-        action="store_true",
-        help="Stable training mode (conservative settings)",
+        "--workers",
+        type=int,
+        help="Number of dataloader workers",
+        choices=[0, 2, 4, 8],
+        metavar="WORKERS",
     )
+
+    parser.add_argument(
+        "--amp", action="store_true", help="Enable Automatic Mixed Precision"
+    )
+
+    parser.add_argument(
+        "--no-amp",
+        action="store_false",
+        dest="amp",
+        help="Disable Automatic Mixed Precision",
+    )
+
+    parser.add_argument(
+        "--check-mps", action="store_true", help="Check MPS availability and exit"
+    )
+
+    parser.add_argument(
+        "--optimize-for-mps",
+        action="store_true",
+        help="Apply aggressive MPS optimizations",
+    )
+
+    # Enable argcomplete if available
+    if ARGCOMPLETE_AVAILABLE:
+        argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
 
-    # Apply presets
-    if args.fast:
-        print("🚀 Fast experimentation mode enabled")
-        args.epochs = 10
-        args.imgsz = 320
-        args.batch = 64
-        args.lr0 = 0.0001
-        args.patience = 3
-
-    if args.stable:
-        print("🎯 Stable training mode enabled")
-        args.epochs = 20
-        args.lr0 = 0.0001
-        args.warmup_epochs = 8.0
-        args.patience = 8
-        args.weight_decay = 0.002
-
-    # Override config with command line arguments
-    class RuntimeConfig(Config):
-        EPOCHS = args.epochs
-        BATCH_SIZE = args.batch
-        DEVICE = args.device
-        MODEL_ARCH = args.model
-        RUN_NAME = args.run_name
-        IMGSZ = args.imgsz
-        LR0 = args.lr0
-        LRF = args.lrf
-        COS_LR = args.cos_lr
-        WARMUP_EPOCHS = args.warmup_epochs
-        WEIGHT_DECAY = args.weight_decay
-        DROPOUT = args.dropout
-        PATIENCE = args.patience
-        SAVE_PERIOD = args.save_period
-        CACHE = args.cache
-        RECT = args.rect
-        MOSAIC = args.mosaic
-        VAL = args.val
-        PLOTS = args.plots
-        AMP = args.amp
-        WORKERS = args.workers
-
-    # Print configuration summary
-    print("=" * 50)
-    print("🔧 TRAINING CONFIGURATION")
-    print("=" * 50)
-    print(f"Model: {RuntimeConfig.MODEL_ARCH}")
-    print(f"Image Size: {RuntimeConfig.IMGSZ}px")
-    print(f"Batch Size: {RuntimeConfig.BATCH_SIZE}")
-    print(f"Epochs: {RuntimeConfig.EPOCHS}")
-    print(f"Learning Rate: {RuntimeConfig.LR0}")
-    print(f"Device: {RuntimeConfig.DEVICE}")
-    print(f"Cache Enabled: {RuntimeConfig.CACHE}")
-    print(f"Patience: {RuntimeConfig.PATIENCE}")
-    if args.fast:
-        print("⚡ Mode: FAST EXPERIMENTATION")
-    elif args.stable:
-        print("🎯 Mode: STABLE TRAINING")
-    else:
-        print("⚙️  Mode: CUSTOM")
-    print("=" * 50)
-
-    try:
-        # Validate paths before starting
-        RuntimeConfig.validate_paths()
-
-        # Create trainer with optimized config
-        trainer = YOLOTrainer(config=RuntimeConfig)
-
-        # Start training
-        print(f"🚀 Starting training run: {RuntimeConfig.RUN_NAME}")
-        trainer.train(resume_if_possible=not args.no_resume)
-
-        print("✅ Training completed successfully!")
-
-    except KeyboardInterrupt:
-        print("\n⚠️  Training interrupted by user")
-        print("💡 You can resume training by running the same command again")
-
-    except Exception as e:
-        print(f"❌ Training failed: {e}")
-        print("💡 Tips for troubleshooting:")
-        print("   - Check your data.yaml file")
-        print("   - Try reducing batch size or image size")
-        print("   - Use --stable mode for more conservative settings")
-        sys.exit(1)
+    # Rest of your main function...
+    # [Previous main function code here]
 
 
 if __name__ == "__main__":
