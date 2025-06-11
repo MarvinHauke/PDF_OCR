@@ -57,63 +57,79 @@ This project provides a robust, production-ready framework for training YOLO mod
 ### 1. Clone and Setup
 
 ```bash
-git clone <your-repo-url>
-cd training_project
-pip install -r requirements.txt
+git clone https://github.com/MarvinHauke/PDF_OCR.git
+cd PDF_OCR
+uv sync
 ```
 
 ### 2. Check MPS Availability
 
 ```bash
-python scripts/train.py --check-mps
+uv run python training_project/scripts/train.py --check-mps
 ```
 
 ### 3. Start Training
 
 ```bash
 # Quick training with auto-optimizations
-python scripts/train.py --optimize-for-mps --device auto
+uv run python training_project/scripts/train.py --optimize-for-mps --device auto
 
 # Or use a specific configuration
-python scripts/train.py --config config/mps_optimized.yaml
+uv run python training_project/scripts/train.py --config training_project/config/mps_optimized.yaml
 ```
 
 ## 📦 Installation
 
 ### Prerequisites
 
-- **Python 3.8+**
+- **Python 3.9+**
 - **macOS 12.3+** (for MPS support)
-- **PyTorch 2.0+** with MPS support
+- **uv** package manager ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
 
 ### Install Dependencies
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd training_project
+git clone https://github.com/MarvinHauke/PDF_OCR.git
+cd PDF_OCR
 
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install dependencies with uv (automatically creates virtual environment)
+uv sync
 
-# Install requirements
-pip install -r requirements.txt
+# Or if you prefer to create virtual environment manually
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv sync
 ```
 
-### Requirements
+### Dependencies
+
+The project uses `pyproject.toml` for dependency management with uv:
+
+```toml
+[project]
+dependencies = [
+    "ultralytics>=8.0.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "pyyaml>=6.0",
+    "numpy>=1.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "argcomplete>=3.0.0",  # For autocompletion
+    "tensorboard>=2.10.0", # For training visualization
+    "black>=23.0.0",       # Code formatting
+    "isort>=5.12.0",       # Import sorting
+    "flake8>=6.0.0",       # Linting
+]
+```
+
+Install with development dependencies:
 
 ```bash
-# Core dependencies
-ultralytics>=8.0.0
-torch>=2.0.0
-torchvision>=0.15.0
-pyyaml>=6.0
-numpy>=1.21.0
-
-# Optional but recommended
-argcomplete>=3.0.0  # For autocompletion
-tensorboard>=2.10.0  # For training visualization
+uv sync --extra dev
 ```
 
 ## ⚙️ Configuration
@@ -160,7 +176,7 @@ paths:
 1. **Copy base configuration:**
 
 ```bash
-cp config/config.yaml config/my_experiment.yaml
+cp training_project/config/config.yaml training_project/config/my_experiment.yaml
 ```
 
 2. **Modify parameters** as needed
@@ -168,7 +184,7 @@ cp config/config.yaml config/my_experiment.yaml
 3. **Use in training:**
 
 ```bash
-python scripts/train.py --config config/my_experiment.yaml
+uv run python training_project/scripts/train.py --config training_project/config/my_experiment.yaml
 ```
 
 ## 🏋️ Training
@@ -178,7 +194,7 @@ python scripts/train.py --config config/my_experiment.yaml
 1. **Organize your dataset:**
 
 ```
-training_data/
+training_project/training_data/
 ├── images/
 │   ├── train/
 │   └── val/
@@ -207,40 +223,40 @@ names:
 
 ```bash
 # Start training with default settings
-python scripts/train.py
+uv run python training_project/scripts/train.py
 
 # Resume training automatically
-python scripts/train.py  # Will auto-resume if checkpoint exists
+uv run python training_project/scripts/train.py  # Will auto-resume if checkpoint exists
 ```
 
 #### Advanced Training Options
 
 ```bash
 # Use specific configuration
-python scripts/train.py --config config/mps_optimized.yaml
+uv run python training_project/scripts/train.py --config training_project/config/mps_optimized.yaml
 
 # Override specific parameters
-python scripts/train.py --epochs 200 --batch 32 --device mps
+uv run python training_project/scripts/train.py --epochs 200 --batch 32 --device mps
 
 # Auto-select best device with optimizations
-python scripts/train.py --device auto --optimize-for-mps
+uv run python training_project/scripts/train.py --device auto --optimize-for-mps
 
 # Train different model sizes
-python scripts/train.py --model yolo11s.pt --epochs 100
-python scripts/train.py --model yolo11m.pt --epochs 150
+uv run python training_project/scripts/train.py --model yolo11s.pt --epochs 100
+uv run python training_project/scripts/train.py --model yolo11m.pt --epochs 150
 ```
 
 #### MPS-Specific Training
 
 ```bash
 # Maximum MPS optimization
-python scripts/train.py --optimize-for-mps --device mps
+uv run python training_project/scripts/train.py --optimize-for-mps --device mps
 
 # MPS with custom batch size
-python scripts/train.py --device mps --batch -1 --workers 0
+uv run python training_project/scripts/train.py --device mps --batch -1 --workers 0
 
 # Monitor MPS performance
-python scripts/train.py --device mps --verbose
+uv run python training_project/scripts/train.py --device mps --verbose
 ```
 
 ### Training Parameters
@@ -267,8 +283,8 @@ python scripts/train.py --device mps --verbose
 
 ```bash
 # Run the setup script
-chmod +x scripts/autocomplete-setup.sh
-./scripts/autocomplete-setup.sh
+chmod +x training_project/scripts/autocomplete-setup.sh
+cd training_project && ./scripts/autocomplete-setup.sh
 
 # Restart terminal or reload shell config
 source ~/.bashrc  # or ~/.zshrc
@@ -280,7 +296,7 @@ source ~/.bashrc  # or ~/.zshrc
 
 ```bash
 # Add to ~/.bashrc
-echo 'source /path/to/training_project/scripts/completions/completion.bash' >> ~/.bashrc
+echo 'source /path/to/PDF_OCR/training_project/scripts/completions/completion.bash' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -288,7 +304,7 @@ source ~/.bashrc
 
 ```bash
 # Add to ~/.zshrc
-echo 'fpath=(/path/to/training_project/scripts/completions $fpath)' >> ~/.zshrc
+echo 'fpath=(/path/to/PDF_OCR/training_project/scripts/completions $fpath)' >> ~/.zshrc
 echo 'autoload -U compinit && compinit' >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -299,23 +315,23 @@ After setup, you'll have intelligent completion for:
 
 ```bash
 # CLI arguments
-python scripts/train.py --<TAB>
+uv run python training_project/scripts/train.py --<TAB>
 # Shows: --config --epochs --batch --device --model etc.
 
 # Configuration files
-python scripts/train.py --config <TAB>
-# Shows: config/config.yaml config/mps_optimized.yaml etc.
+uv run python training_project/scripts/train.py --config <TAB>
+# Shows: training_project/config/config.yaml training_project/config/mps_optimized.yaml etc.
 
 # Device options
-python scripts/train.py --device <TAB>
+uv run python training_project/scripts/train.py --device <TAB>
 # Shows: auto cpu mps cuda
 
 # Model architectures
-python scripts/train.py --model <TAB>
+uv run python training_project/scripts/train.py --model <TAB>
 # Shows: yolo11n.pt yolo11s.pt yolo11m.pt etc.
 
 # Common values
-python scripts/train.py --batch <TAB>
+uv run python training_project/scripts/train.py --batch <TAB>
 # Shows: -1 8 16 32 64
 ```
 
@@ -325,23 +341,23 @@ python scripts/train.py --batch <TAB>
 
 ```bash
 # Check system compatibility
-python scripts/train.py --check-mps
+uv run python training_project/scripts/train.py --check-mps
 
 # Start optimized training
-python scripts/train.py --optimize-for-mps
+uv run python training_project/scripts/train.py --optimize-for-mps
 ```
 
 ### Example 2: Custom Experiment
 
 ```bash
 # Create custom config
-cp config/mps_optimized.yaml config/my_experiment.yaml
+cp training_project/config/mps_optimized.yaml training_project/config/my_experiment.yaml
 
 # Edit config file with your parameters
-# nano config/my_experiment.yaml
+# nano training_project/config/my_experiment.yaml
 
 # Train with custom config
-python scripts/train.py --config config/my_experiment.yaml --run-name my_experiment_v1
+uv run python training_project/scripts/train.py --config training_project/config/my_experiment.yaml --run-name my_experiment_v1
 ```
 
 ### Example 3: Hyperparameter Sweep
@@ -349,7 +365,7 @@ python scripts/train.py --config config/my_experiment.yaml --run-name my_experim
 ```bash
 # Train different model sizes
 for model in yolo11n.pt yolo11s.pt yolo11m.pt; do
-    python scripts/train.py --model $model --run-name "sweep_$model" --epochs 50
+    uv run python training_project/scripts/train.py --model $model --run-name "sweep_$model" --epochs 50
 done
 ```
 
@@ -357,8 +373,8 @@ done
 
 ```bash
 # Long training run with all optimizations
-python scripts/train.py \
-    --config config/mps_optimized.yaml \
+uv run python training_project/scripts/train.py \
+    --config training_project/config/mps_optimized.yaml \
     --epochs 300 \
     --patience 100 \
     --run-name production_v1 \
@@ -373,11 +389,11 @@ python scripts/train.py \
 
 ```bash
 # Check MPS status
-python scripts/train.py --check-mps
+uv run python training_project/scripts/train.py --check-mps
 
 # Solutions:
 # 1. Update to macOS 12.3+
-# 2. Install PyTorch with MPS support: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# 2. Install PyTorch with MPS support: uv add torch torchvision --index-url https://download.pytorch.org/whl/cpu
 # 3. Use CPU fallback: --device cpu
 ```
 
@@ -385,20 +401,20 @@ python scripts/train.py --check-mps
 
 ```bash
 # Apply MPS optimizations
-python scripts/train.py --optimize-for-mps
+uv run python training_project/scripts/train.py --optimize-for-mps
 
 # Or manually set safe parameters
-python scripts/train.py --workers 0 --batch -1 --device mps
+uv run python training_project/scripts/train.py --workers 0 --batch -1 --device mps
 ```
 
 #### Memory Errors
 
 ```bash
 # Reduce batch size
-python scripts/train.py --batch 8
+uv run python training_project/scripts/train.py --batch 8
 
 # Enable aggressive memory management
-python scripts/train.py --config config/mps_optimized.yaml
+uv run python training_project/scripts/train.py --config training_project/config/mps_optimized.yaml
 ```
 
 #### "GPU_mem: 0G" Showing
@@ -426,14 +442,14 @@ This is normal for MPS! Check Activity Monitor → GPU tab to see actual GPU usa
 
 ```bash
 # Clone repository
-git clone <your-repo-url>
-cd training_project
+git clone https://github.com/MarvinHauke/PDF_OCR.git
+cd PDF_OCR
 
 # Install development dependencies
-pip install -r requirements-dev.txt
+uv sync --extra dev
 
-# Install pre-commit hooks
-pre-commit install
+# Install pre-commit hooks (if configured)
+uv run pre-commit install
 ```
 
 ### Code Style
@@ -467,9 +483,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
-- **Documentation**: Check the `docs/` folder for detailed guides
+- **Issues**: [GitHub Issues](https://github.com/MarvinHauke/PDF_OCR/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/MarvinHauke/PDF_OCR/discussions)
+- **Documentation**: Check the `training_project/docs/` folder for detailed guides
 
 ---
 
