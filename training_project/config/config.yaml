@@ -3,7 +3,7 @@
 
 # Model configuration
 model:
-  architecture: "yolo11l.pt"
+  architecture: "yolo11n.pt"
   use_best_weights: false
 
 # Training parameters
