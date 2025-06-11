@@ -19,7 +19,9 @@ from src.predictor import YOLOPredictor
 
 def main():
     parser = argparse.ArgumentParser(description="Run YOLO predictions")
-    parser.add_argument("source", nargs="?", help="Source image or directory")
+    parser.add_argument(
+        "source", nargs="?", help="Source image or directory, use '0' for local webcam"
+    )
     parser.add_argument("--output", "-o", help="Output directory")
     parser.add_argument(
         "--conf",

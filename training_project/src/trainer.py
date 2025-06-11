@@ -41,11 +41,11 @@ class YOLOTrainer:
     def train(self, resume_if_possible=True):
         """Train the model with automatic resume detection"""
         try:
-            if self.config.is_run_complete():
-                self.logger.info(
-                    f"Run '{self.config.RUN_NAME}' already completed. Skipping training."
-                )
-                return None
+            # if self.config.is_run_complete():
+            #     self.logger.info(
+            #         f"Run '{self.config.RUN_NAME}' already completed. Skipping training."
+            #     )
+            #     return None
 
             weights_path = self.config.get_weights_path()
 

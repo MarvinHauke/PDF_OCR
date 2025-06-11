@@ -1,0 +1,29 @@
+# config/config.yaml
+# YOLO Training Configuration
+
+# Model configuration
+model:
+  architecture: "yolo11n.pt"
+  use_best_weights: false
+
+# Training parameters
+training:
+  run_name: "run"
+  image_size: 640
+  batch_size: 16
+  epochs: 100
+  workers: 8
+  device: "mps" # options: "cuda", "mps", "cpu"
+  patience: 50
+  save_period: 10
+
+# Prediction configuration
+prediction:
+  confidence_threshold: 0.25
+
+# Paths (relative to project root)
+paths:
+  training_data: "training_data"
+  dataset_yaml: "training_data/data.yaml"
+  project: "training_data/runs"
+  output: "../output"
