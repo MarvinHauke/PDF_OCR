@@ -1,6 +1,3 @@
-# ===========================================
-# File: training_project/scripts/train.py (MPS Enhanced)
-# ===========================================
 #!/usr/bin/env python3
 """Training script for YOLO model with autocompletion support"""
 
@@ -93,7 +90,6 @@ Examples:
         "--epochs",
         type=int,
         help="Number of epochs",
-        choices=[10, 50, 100, 200, 300],
         metavar="EPOCHS",
     )
 
@@ -101,7 +97,6 @@ Examples:
         "--batch",
         type=int,
         help="Batch size (-1 for auto)",
-        choices=[-1, 8, 16, 32, 64],
         metavar="BATCH",
     )
 
@@ -126,7 +121,6 @@ Examples:
         "--workers",
         type=int,
         help="Number of dataloader workers",
-        choices=[0, 2, 4, 8],
         metavar="WORKERS",
     )
 
@@ -151,14 +145,114 @@ Examples:
         help="Apply aggressive MPS optimizations",
     )
 
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Verbose output",
+    )
+
     # Enable argcomplete if available
     if ARGCOMPLETE_AVAILABLE:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
 
-    # Rest of your main function...
-    # [Previous main function code here]
+    # Check MPS availability if requested
+    if args.check_mps:
+        check_mps_availability()
+        return
+
+    try:
+        # Load configuration
+        config = Config(config_file=args.config) if args.config else Config()
+
+        # Auto-select device if requested
+        if args.device == "auto":
+            if torch.backends.mps.is_available():
+                args.device = "mps"
+                print("🍎 Auto-selected MPS device (Apple Silicon)")
+            elif torch.cuda.is_available():
+                args.device = "cuda"
+                print("🚀 Auto-selected CUDA device")
+            else:
+                args.device = "cpu"
+                print("💻 Auto-selected CPU device")
+
+        # Apply MPS optimizations if requested
+        if args.optimize_for_mps and (args.device == "mps" or config.DEVICE == "mps"):
+            print("🔧 Applying aggressive MPS optimizations...")
+            # Override config for maximum MPS compatibility
+            config.WORKERS = 0
+            config.BATCH_SIZE = -1  # Auto batch size
+            config.AMP = True
+            config.HALF = False
+            config.CACHE = False
+            config.PIN_MEMORY = False
+            config.PERSISTENT_WORKERS = False
+            config.MULTI_SCALE = False
+            config.DETERMINISTIC = False
+
+        # Override with command line arguments
+        if args.epochs is not None:
+            config.EPOCHS = args.epochs
+        if args.batch is not None:
+            config.BATCH_SIZE = args.batch
+        if args.device is not None:
+            config.DEVICE = args.device
+        if args.model is not None:
+            config.MODEL_ARCH = args.model
+        if args.run_name is not None:
+            config.RUN_NAME = args.run_name
+        if args.workers is not None:
+            config.WORKERS = args.workers
+        if args.amp is not None:
+            config.AMP = args.amp
+
+        # Print final configuration
+        if args.verbose:
+            check_mps_availability()
+            print("\n=== Final Configuration ===")
+            print(f"Device: {config.DEVICE}")
+            print(f"Model: {config.MODEL_ARCH}")
+            print(f"Epochs: {config.EPOCHS}")
+            print(f"Batch Size: {config.BATCH_SIZE}")
+            print(f"Workers: {config.WORKERS}")
+            print(f"AMP: {config.AMP}")
+            print(f"Run Name: {config.RUN_NAME}")
+            print("=" * 30)
+
+        print(f"🚀 Starting YOLO training...")
+        print(f"   Model: {config.MODEL_ARCH}")
+        print(f"   Device: {config.DEVICE}")
+        print(f"   Epochs: {config.EPOCHS}")
+        print(f"   Batch: {config.BATCH_SIZE}")
+        print(f"   Run: {config.RUN_NAME}")
+
+        trainer = YOLOTrainer(config=config)
+        results = trainer.train(resume_if_possible=not args.no_resume)
+
+        if results:
+            print("✅ Training completed successfully!")
+        else:
+            print("ℹ️ Training skipped (already completed or resumed)")
+
+    except KeyboardInterrupt:
+        print("\n🛑 Training interrupted by user")
+        # Clean up MPS cache if needed
+        if torch.backends.mps.is_available():
+            try:
+                if hasattr(torch.mps, "empty_cache"):
+                    torch.mps.empty_cache()
+                print("🧹 Cleaned up MPS cache")
+            except:
+                pass
+    except Exception as e:
+        print(f"❌ Training failed: {e}")
+        if args.verbose:
+            import traceback
+
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
