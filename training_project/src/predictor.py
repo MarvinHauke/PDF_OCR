@@ -23,7 +23,7 @@ class YOLOPredictor:
         if not Path(self.model_path).exists():
             raise FileNotFoundError(f"No trained model found at {self.model_path}")
 
-    def predict(self, source, save_dir=None, conf=None):
+    def predict(self, source, save_dir=None, conf=None, show=False, save=None):
         """Run prediction on source"""
         model = YOLO(str(self.model_path))
 
@@ -31,16 +31,22 @@ class YOLOPredictor:
         if save_dir is None:
             save_dir = self.config.OUTPUT_PATH
 
+        # Live sources (e.g. a webcam) default to not saving every frame unless asked
+        if save is None:
+            save = not show
+
         predict_params = {
             "source": source,
-            "save": True,
+            "save": save,
+            "show": show,
             "conf": conf or self.config.CONFIDENCE_THRESHOLD,
             "project": str(save_dir),
             "name": "yolo_predictions",
         }
 
         self.logger.info(f"Running prediction on: {source}")
-        self.logger.info(f"Results will be saved to: {save_dir}/yolo_predictions")
+        if save:
+            self.logger.info(f"Results will be saved to: {save_dir}/yolo_predictions")
 
         results = model.predict(**predict_params)
         self.logger.info("Prediction completed!")

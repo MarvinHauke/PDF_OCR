@@ -35,6 +35,9 @@ def main():
     parser.add_argument(
         "--img-folder", action="store_true", help="Use main img folder as source"
     )
+    parser.add_argument(
+        "--show", action="store_true", help="Show a live annotated window (needed for webcam)"
+    )
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
@@ -46,12 +49,13 @@ def main():
         if args.img_folder:
             source = default_config.PROJECT_ROOT.parent / "img"
         elif args.source:
-            source = args.source
+            # Ultralytics expects an int index for webcam sources (e.g. "0")
+            source = int(args.source) if args.source.isdigit() else args.source
         else:
             print("Please specify a source or use --img-folder flag")
             sys.exit(1)
 
-        predictor.predict(source, save_dir=args.output, conf=args.conf)
+        predictor.predict(source, save_dir=args.output, conf=args.conf, show=args.show)
 
     except Exception as e:
         print(f"Prediction failed: {e}")
