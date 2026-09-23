@@ -7,6 +7,7 @@ from pdf_ocr.training import DATASET_CONFIGS, dataset_config
 
 SOURCES = {
     "wikimedia": "pdf_ocr.crawl.wikimedia",
+    "wikimedia_blocks": "pdf_ocr.crawl.wikimedia",
     "archive_org": "pdf_ocr.crawl.archive_org",
     "kicad_github": "pdf_ocr.crawl.kicad_github",
     "urls": "pdf_ocr.crawl.url_list",

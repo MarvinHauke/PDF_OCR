@@ -15,6 +15,7 @@ limits:
   requests_per_second: 1 # per host
   per_run: # default for --limit
     wikimedia: 200
+    wikimedia_blocks: 100
     archive_org: 10
     kicad_github: 20
     urls: 50
@@ -72,6 +73,17 @@ wikimedia:
     Bandgap voltage reference: power_supply
     Charge pump circuits: power_supply
     Synthesizer circuits: null
+
+# Block diagrams are page-level figures like schematics (class block_diagram in the page
+# dataset), not subcircuits. Commons' "Block diagrams" also holds economics and database
+# diagrams, so only the electronics subcategories are used, without descending further.
+wikimedia_blocks:
+  dataset: pages
+  max_depth: 0
+  render_width: 2000
+  categories:
+    Functional block diagrams: block_diagram
+    Radio receiver block diagrams: block_diagram
 
 archive_org:
   dataset: pages # full documents -> page dataset

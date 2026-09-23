@@ -4,7 +4,8 @@
 
 Stage 2 of the detector finds functional blocks (power_supply, amplifier,
 filter, oscillator) inside a schematic, not on the whole page, so small
-details keep their resolution. Crops come only from labels in the page
+details keep their resolution. Only `schematic` boxes are cropped (block
+diagrams have no subcircuits). Crops come only from labels in the page
 dataset's train/ and val/ (human-verified or confidently accepted), are
 written to the subcircuit dataset's unlabeled/ folder, and are recorded in
 crops_manifest.jsonl (parent image + box) so they can be traced back to the
@@ -31,6 +32,13 @@ from src.autolabeler import IMAGE_SUFFIXES
 from src.utils import config_file_completer
 
 SUBCIRCUIT_CLASSES = ["power_supply", "amplifier", "filter", "oscillator"]
+CROP_CLASS = "schematic"
+
+
+def class_id(yaml_path: Path, name: str) -> int:
+    names = yaml.safe_load(yaml_path.read_text())["names"]
+    names = list(names.values()) if isinstance(names, dict) else list(names)
+    return names.index(name)
 
 
 def ensure_dataset_yaml(config: Config):
@@ -87,6 +95,7 @@ def main():
     pages = Config(config_file=args.pages_config) if args.pages_config else Config()
     crops = Config(config_file=args.config)
     ensure_dataset_yaml(crops)
+    crop_class = class_id(pages.YAML_PATH, CROP_CLASS)
 
     out_dir = crops.UNLABELED_PATH
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -106,13 +115,16 @@ def main():
                 label_path = labels_dir / f"{image_path.stem}.txt"
                 if not label_path.exists():
                     continue
+                # Number crops by their line in the label file, so relabeling another
+                # box (e.g. as block_diagram) doesn't rename existing crops
                 lines = [l for l in label_path.read_text().splitlines() if l.strip()]
-                if not lines:
+                numbered = [(n, l) for n, l in enumerate(lines, start=1) if int(l.split()[0]) == crop_class]
+                if not numbered:
                     continue
 
                 with Image.open(image_path) as image:
                     image = image.convert("RGB")
-                    for n, line in enumerate(lines, start=1):
+                    for n, line in numbered:
                         crop_name = f"{image_path.stem}-s{n}.png"
                         if crop_name in seen:
                             skipped += 1

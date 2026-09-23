@@ -48,7 +48,10 @@ optimized for Apple Silicon (MPS):
 - `scripts/import_reviewed.py` — turns a Label Studio JSON export into `train/`/`val/` labels.
 - `scripts/rename_class.py` — renames a class inside trained weights (no retraining).
 - `scripts/make_crops.py` + `config/subcircuits.yaml` — second dataset: functional subcircuit
-  blocks inside schematic crops.
+  blocks inside schematic crops. The page dataset has three classes: `schematic`,
+  `block_diagram`, `pcb`.
+- `scripts/review_existing.py` — re-review images already in `train/`/`val/` (e.g. after
+  adding classes); `import_reviewed.py` rewrites their labels in place.
 - `scripts/start_label_studio.sh`, `scripts/setup_label_studio.py`, `labelstudio/` — Label
   Studio setup, labeling configs and our own ML backend (see `training_project/README.md`).
 - `scripts/evaluate.py` — **empty stub**, not implemented yet.

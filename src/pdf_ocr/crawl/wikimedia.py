@@ -71,7 +71,7 @@ def _plain(html: str | None) -> str | None:
 
 
 def crawl(ctx: CrawlContext):
-    settings = ctx.settings["wikimedia"]
+    settings = ctx.settings[ctx.name]  # "wikimedia" or "wikimedia_blocks"
     limits = ctx.settings["limits"]
     if not ctx.fetcher.has_contact:
         print("  note: crawl.yaml `contact` is empty; Wikimedia asks for contact info in the User-Agent")

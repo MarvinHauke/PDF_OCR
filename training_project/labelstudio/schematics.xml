@@ -1,7 +1,9 @@
 <View>
-  <Header value="Draw a box around every schematic on the page. Submit without boxes if there is none."/>
+  <Header value="Box every figure on the page. schematic: real component symbols (resistors, transistors, op-amps with external wiring), also when mixed with IC blocks. block_diagram: only boxes and arrows, no component symbols. pcb: board layout, component placement / assembly drawing, or photo of a circuit board. Submit without boxes if there is none of these."/>
   <Image name="image" value="$image" zoom="true"/>
   <RectangleLabels name="label" toName="image">
-    <Label value="schematic" background="#1f77b4"/>
+    <Label value="schematic" background="#1f77b4" hotkey="1"/>
+    <Label value="block_diagram" background="#17becf" hotkey="2"/>
+    <Label value="pcb" background="#2ca02c" hotkey="3"/>
   </RectangleLabels>
 </View>

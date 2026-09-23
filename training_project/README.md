@@ -12,6 +12,7 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
 - [Training](#training)
 - [Labeling Workflow](#labeling-workflow)
   - [Label Studio setup](#label-studio-setup)
+  - [Page classes](#page-classes)
   - [Subcircuits (stage 2)](#subcircuits-stage-2)
   - [Crawling training material](#crawling-training-material)
 - [Autocompletion Setup](#autocompletion-setup)
@@ -344,7 +345,7 @@ It sets up two projects:
 
 | Project | Labeling config | Tasks from | Pre-labels from |
 |---|---|---|---|
-| Schematics (pages) | `labelstudio/schematics.xml` | `training_data/review_queue/` | page model |
+| Schematics (pages): schematic, block_diagram, pcb | `labelstudio/schematics.xml` | `training_data/review_queue/` | page model |
 | Subcircuits (crops) | `labelstudio/subcircuits.xml` | `training_data/subcircuits/review_queue/` | subcircuit model, once trained |
 
 Things that are easy to get wrong, and why the script handles them:
@@ -361,6 +362,29 @@ directly instead of using the `label-studio-ml` package, whose SDK dependency ne
 `opencv-python-headless` (the same `cv2` conflict). Label Studio asks it for predictions when
 you open a task that has none. It picks the model whose class names match the project's
 labels and reloads weights after retraining.
+
+### Page classes
+
+The page dataset (stage 1) has three classes, all page-level figures:
+
+| Class | Rule |
+|---|---|
+| `schematic` | real component symbols (resistors, transistors, op-amps with external wiring), also when mixed with IC blocks |
+| `block_diagram` | only boxes and arrows, no component symbols |
+| `pcb` | board layout, component placement / assembly drawing, or photo of a circuit board |
+
+Only `schematic` boxes are cropped for the subcircuit dataset. The rules are also shown in the
+Label Studio view (`labelstudio/schematics.xml`, hotkeys 1–3).
+
+When classes change, existing images have to be checked again, since an unlabeled block
+diagram in `train/` teaches the model it's background. `review_existing.py` sends images that
+are already in `train/`/`val/` to Label Studio with their current boxes pre-drawn;
+`import_reviewed.py` then rewrites only their label files and leaves them in their split:
+
+```bash
+uv run python training_project/scripts/review_existing.py train/images/x.png val/images/y.jpg   # or --all
+uv run python training_project/scripts/setup_label_studio.py
+```
 
 ### Subcircuits (stage 2)
 
@@ -392,6 +416,7 @@ matching dataset; from there it's the normal workflow (`pdf-ocr ingest [--datase
 | Source | What | Dataset | Tier |
 |---|---|---|---|
 | `wikimedia` | circuit diagrams from Commons categories, with a class hint per category | subcircuits | `free` |
+| `wikimedia_blocks` | electronic block diagrams (Commons *Functional* / *Radio receiver block diagrams*) | pages | `free` |
 | `kicad_github` | open-hardware KiCad projects (`topic:kicad license:<key>`), rendered with `kicad-cli` | subcircuits | `free` |
 | `archive_org` | synthesizer service manual PDFs | pages | mostly `restricted` |
 | `urls` | your list in `training_data/sources/datasheet_urls.txt` | pages | depends |

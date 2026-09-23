@@ -86,6 +86,16 @@ Next experiments, cheapest first:
       free/restricted license tiers, reviewed/blocked host lists, robots.txt + TDM opt-out checks,
       a 1 GB total cap and provenance per file (`training_project/config/crawl.yaml`).
       `pdf-ocr ingest` gained `--dataset subcircuits` and `--max-pages`.
+- [x] **Page classes `block_diagram` and `pcb` (2026-09-24)** next to `schematic`: labeling
+      rules in the Label Studio view, `make_crops.py` crops only schematics, crawler source
+      `wikimedia_blocks`, and `review_existing.py` + in-place relabeling in
+      `import_reviewed.py` to re-check images already in `train/`/`val/`. None of the 145
+      labeled boxes was a block diagram or PCB; 8 images with unlabeled candidates (e.g. a
+      chorus block diagram in `val/`) are queued for review.
+- [ ] **Retrain with 3 page classes** once the review queue (42 new pages + 8 re-reviews) is
+      labeled. The current weights know only `schematic`.
+- [ ] **Resolution experiment:** `run2_imgsz1280` (same data as `run2`, 1280 px instead of 640)
+      to see whether small schematics are found more reliably.
 - [ ] More service-manual sources: hobby sites (Lojinx, synfo.nl, servicemanual.altervista,
       SynthXL, Vintage Synth Parts), one at a time after checking each site's terms, then add
       the host to `reviewed_hosts`. elektronik-kompendium.de stays blocked unless the operator

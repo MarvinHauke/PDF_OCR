@@ -58,7 +58,7 @@ def main():
         "crawl",
         help="Download training material (limits, licenses and hosts in training_project/config/crawl.yaml)",
     )
-    crawl.add_argument("source", choices=["wikimedia", "archive_org", "kicad_github", "urls"])
+    crawl.add_argument("source", choices=["wikimedia", "wikimedia_blocks", "archive_org", "kicad_github", "urls"])
     crawl.add_argument("--limit", type=int, help="Max files this run (default: crawl.yaml per_run)")
     crawl.add_argument("--dry-run", action="store_true", help="Only list what would be downloaded")
 

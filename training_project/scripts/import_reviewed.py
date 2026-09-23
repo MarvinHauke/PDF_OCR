@@ -10,6 +10,9 @@ label. A submitted annotation without boxes becomes an empty label, i.e. a
 confirmed background image. The split is decided by a hash of the filename
 (autolabel.val_fraction), so it's stable across runs.
 
+Images that are already in train/ or val/ (queued by review_existing.py, e.g.
+after adding classes) keep their place: only their label file is rewritten.
+
 Tasks without an annotation, or whose annotation was skipped/cancelled, stay
 in the review queue.
 """
@@ -125,13 +128,27 @@ def main():
         print(f"Import aborted, nothing was moved: {e}")
         sys.exit(1)
 
-    counts = {"train": 0, "val": 0, "missing": 0}
+    counts = {"train": 0, "val": 0, "relabeled": 0, "missing": 0}
+    existing_splits = {
+        (config.TRAINING_DATA_PATH / s / "images").resolve(): s for s in ("train", "val")
+    }
     imported_urls = set()
     for url, image_path, lines in imports:
         if not image_path.exists():
             # Already imported earlier, or moved by hand
             print(f"missing, skipped: {image_path.name}")
             counts["missing"] += 1
+            continue
+
+        in_split = existing_splits.get(image_path.resolve().parent)
+        if in_split:
+            # Re-reviewed image (review_existing.py): rewrite the label, keep the image
+            print(f"{image_path.name}: relabeled in {in_split}/ ({len(lines)} box(es))")
+            counts["relabeled"] += 1
+            imported_urls.add(url)
+            if not args.dry_run:
+                label = config.TRAINING_DATA_PATH / in_split / "labels" / f"{image_path.stem}.txt"
+                label.write_text("\n".join(lines) + "\n" if lines else "")
             continue
 
         split = pick_split(image_path.name, val_fraction)
@@ -158,7 +175,8 @@ def main():
 
     prefix = "Would import" if args.dry_run else "Imported"
     print(
-        f"\n{prefix}: {counts['train']} -> train/, {counts['val']} -> val/"
+        f"\n{prefix}: {counts['train']} -> train/, {counts['val']} -> val/, "
+        f"{counts['relabeled']} relabeled in place"
         f"\nMissing images: {counts['missing']}"
         f"\nNot yet reviewed (left in the queue): {pending}"
     )
