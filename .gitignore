@@ -8,6 +8,7 @@ __pycache__/
 
 # Direnv
 .envrc
+.direnv/
 
 # Training_data
 training_project/training_data/*
@@ -15,6 +16,12 @@ training_project/training_data/*
 # Outputs
 tmp/*
 output/*
+
+# Claude Code (local settings/permissions, agent-session scratch)
+.claude/
+
+# Serena (MCP project index/config/memories)
+.serena/
 
 
 # C extensions
