@@ -17,6 +17,12 @@ training_project/training_data/*
 tmp/*
 output/*
 
+# Application input: keep only the tracked samples, not datasheets dropped in locally
+input/*
+!input/CEM33403345-VCO.pdf
+!input/example.png
+!input/test.png
+
 # Claude Code (local settings/permissions, agent-session scratch)
 .claude/
 

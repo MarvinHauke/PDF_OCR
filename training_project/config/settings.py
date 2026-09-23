@@ -130,6 +130,8 @@ class Config:
             self.AUTOLABEL_REJECT_THRESHOLD = autolabel_config.get("reject_threshold", 0.35)
             self.LABEL_STUDIO_FROM_NAME = autolabel_config.get("label_studio_from_name", "label")
             self.LABEL_STUDIO_TO_NAME = autolabel_config.get("label_studio_to_name", "image")
+            self.REVIEW_NO_DETECTION_RATE = autolabel_config.get("review_no_detection_rate", 1.0)
+            self.VAL_FRACTION = autolabel_config.get("val_fraction", 0.2)
 
             # Path configuration
             paths_config = config_data.get("paths", {})
@@ -139,6 +141,8 @@ class Config:
             )
             self._project_rel = paths_config.get("project", "training_data/runs")
             self._output_rel = paths_config.get("output", "../output")
+            self._sources_rel = paths_config.get("sources", "training_data/sources")
+            self._unlabeled_rel = paths_config.get("unlabeled", "training_data/unlabeled")
 
         except FileNotFoundError:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
@@ -151,6 +155,8 @@ class Config:
         self.YAML_PATH = self.PROJECT_ROOT / self._dataset_yaml_rel
         self.PROJECT_PATH = self.PROJECT_ROOT / self._project_rel
         self.OUTPUT_PATH = self.PROJECT_ROOT / self._output_rel
+        self.SOURCES_PATH = self.PROJECT_ROOT / self._sources_rel
+        self.UNLABELED_PATH = self.PROJECT_ROOT / self._unlabeled_rel
 
     def _optimize_for_mps(self):
         """Apply MPS-specific optimizations"""
@@ -311,6 +317,8 @@ class Config:
         print(f"Weights Path: {self.get_weights_path()}")
         print(f"Project Path: {self.PROJECT_PATH}")
         print(f"Output Path: {self.OUTPUT_PATH}")
+        print(f"Sources: {self.SOURCES_PATH}")
+        print(f"Unlabeled: {self.UNLABELED_PATH}")
         print("=" * 30)
 
     def print_mps_info(self):
@@ -383,6 +391,8 @@ class Config:
                 "dataset_yaml": self._dataset_yaml_rel,
                 "project": self._project_rel,
                 "output": self._output_rel,
+                "sources": self._sources_rel,
+                "unlabeled": self._unlabeled_rel,
             },
         }
 

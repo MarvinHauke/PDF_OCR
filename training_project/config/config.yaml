@@ -98,6 +98,8 @@ paths:
   dataset_yaml: "training_data/data.yaml"
   project: "training_data/runs"
   output: "../output"
+  sources: "training_data/sources" # raw training material (PDFs/images), read by `pdf-ocr ingest`
+  unlabeled: "training_data/unlabeled" # rendered pages waiting for autolabel.py
 
 # Environment-specific configs
 environment:
@@ -115,3 +117,8 @@ autolabel:
   # match Label Studio's standard Object Detection with Bounding Boxes template.
   label_studio_from_name: "label"
   label_studio_to_name: "image"
+  # Share of images without any detection sent to review (the rest go to skipped/).
+  # Reviewing them is how missed schematics get labeled.
+  review_no_detection_rate: 1.0
+  # Share of human-reviewed images import_reviewed.py puts into val/ (by filename hash)
+  val_fraction: 0.2
