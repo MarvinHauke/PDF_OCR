@@ -124,6 +124,13 @@ class Config:
             self.DEBUG = env_config.get("debug", False)
             self.SEED = env_config.get("seed", 0)
 
+            # Autolabeling pipeline settings
+            autolabel_config = config_data.get("autolabel", {})
+            self.AUTOLABEL_ACCEPT_THRESHOLD = autolabel_config.get("accept_threshold", 0.75)
+            self.AUTOLABEL_REJECT_THRESHOLD = autolabel_config.get("reject_threshold", 0.35)
+            self.LABEL_STUDIO_FROM_NAME = autolabel_config.get("label_studio_from_name", "label")
+            self.LABEL_STUDIO_TO_NAME = autolabel_config.get("label_studio_to_name", "image")
+
             # Path configuration
             paths_config = config_data.get("paths", {})
             self._training_data_rel = paths_config.get("training_data", "training_data")
