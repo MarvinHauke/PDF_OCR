@@ -1,18 +1,18 @@
-# ===========================================
-# File: training_project/scripts/predict.py (Updated)
-# ===========================================
 #!/usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
 """Prediction script for YOLO model"""
 
 import argparse
 import sys
 from pathlib import Path
 
+import argcomplete
+
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from config.settings import Config
+from config.settings import default_config
 
 from src.predictor import YOLOPredictor
 
@@ -26,14 +26,17 @@ def main():
     parser.add_argument(
         "--conf",
         type=float,
-        default=Config.CONFIDENCE_THRESHOLD,
+        default=default_config.CONFIDENCE_THRESHOLD,
         help="Confidence threshold",
     )
-    parser.add_argument("--model", help="Path to model weights")
+    parser.add_argument(
+        "--model", help="Path to model weights"
+    ).completer = argcomplete.completers.FilesCompleter()
     parser.add_argument(
         "--img-folder", action="store_true", help="Use main img folder as source"
     )
 
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     try:
@@ -41,7 +44,7 @@ def main():
 
         # Determine source
         if args.img_folder:
-            source = Config.PROJECT_ROOT.parent / "img"
+            source = default_config.PROJECT_ROOT.parent / "img"
         elif args.source:
             source = args.source
         else:

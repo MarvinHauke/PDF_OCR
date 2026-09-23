@@ -279,34 +279,33 @@ uv run python training_project/scripts/train.py --device mps --verbose
 
 ## 🎯 Autocompletion Setup
 
-### Automatic Setup (Recommended)
+Completion is powered by [`argcomplete`](https://github.com/kislyuk/argcomplete) directly on
+`train.py` and `predict.py` (both carry a `# PYTHON_ARGCOMPLETE_OK` marker) — there are no
+project-specific shell scripts to install or maintain.
+
+### Global Setup (Recommended)
 
 ```bash
-# Run the setup script
-chmod +x training_project/scripts/autocomplete-setup.sh
-cd training_project && ./scripts/autocomplete-setup.sh
+# One-time: registers completion for any argcomplete-enabled script on your PATH
+activate-global-python-argcomplete --user
 
 # Restart terminal or reload shell config
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### Manual Setup
-
-#### For Bash
+### Per-script Setup
 
 ```bash
-# Add to ~/.bashrc
-echo 'source /path/to/PDF_OCR/training_project/scripts/completions/completion.bash' >> ~/.bashrc
-source ~/.bashrc
+# Add to ~/.bashrc or ~/.zshrc
+eval "$(register-python-argcomplete training_project/scripts/train.py)"
+eval "$(register-python-argcomplete training_project/scripts/predict.py)"
 ```
 
-#### For Zsh
+### Debugging completion
 
 ```bash
-# Add to ~/.zshrc
-echo 'fpath=(/path/to/PDF_OCR/training_project/scripts/completions $fpath)' >> ~/.zshrc
-echo 'autoload -U compinit && compinit' >> ~/.zshrc
-source ~/.zshrc
+# Checks argcomplete is installed, the magic comment is present, and registration works
+./training_project/scripts/debug_completion.sh
 ```
 
 ### Using Autocompletion
@@ -485,7 +484,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/MarvinHauke/PDF_OCR/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/MarvinHauke/PDF_OCR/discussions)
-- **Documentation**: Check the `training_project/docs/` folder for detailed guides
+- **Documentation**: Check the [`docs/`](../docs/) folder at the repo root for project-wide planning and guides
 
 ---
 

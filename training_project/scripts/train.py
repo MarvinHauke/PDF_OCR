@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
 """Training script for YOLO model with autocompletion support"""
 
 import argparse

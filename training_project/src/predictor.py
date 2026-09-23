@@ -4,7 +4,7 @@
 import logging
 from pathlib import Path
 
-from config.settings import Config
+from config.settings import default_config
 from ultralytics import YOLO
 
 from src.utils import setup_logging
@@ -15,7 +15,7 @@ class YOLOPredictor:
 
     def __init__(self, config=None, model_path=None):
         self.logger = setup_logging()
-        self.config = config or Config
+        self.config = config or default_config
 
         # Use custom model path or default weights path
         self.model_path = model_path or self.config.get_weights_path()
