@@ -10,6 +10,7 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Training](#training)
+- [Labeling Workflow](#labeling-workflow)
 - [Autocompletion Setup](#autocompletion-setup)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -169,7 +170,12 @@ paths:
   training_data: "training_data"
   dataset_yaml: "training_data/data.yaml"
   project: "training_data/runs"
+  sources: "training_data/sources"
+  unlabeled: "training_data/unlabeled"
 ```
+
+See the Labeling workflow section below for what the `sources/` and `unlabeled/` folders
+are for.
 
 ### Creating Custom Configurations
 
@@ -276,6 +282,55 @@ uv run python training_project/scripts/train.py --device mps --verbose
 - **Weights & Biases**: Automatic experiment tracking (if configured)
 - **TensorBoard**: Enable with `tensorboard: true` in config
 - **Activity Monitor**: Check GPU utilization on macOS
+
+## 🏷️ Labeling workflow
+
+How new training data gets from a PDF to a labeled image:
+
+```
+training_data/sources/manual/        you drop PDFs/images here (crawler output: sources/crawled/<site>/)
+        │  uv run pdf-ocr ingest
+training_data/unlabeled/             rendered pages, not yet processed
+        │  uv run python training_project/scripts/autolabel.py
+        ├─▶ train/                   every box confidently accepted → labeled automatically
+        ├─▶ review_queue/images/     anything uncertain, or no detections → human review
+        └─▶ skipped/                 no detections and not sampled (review_no_detection_rate < 1)
+        │  Label Studio: review, export JSON
+        │  uv run python training_project/scripts/import_reviewed.py export.json
+        └─▶ train/ or val/           human-verified (val_fraction goes to val/)
+```
+
+1. **Ingest.** `uv run pdf-ocr ingest` renders every PDF under `sources/` and copies images
+   into `unlabeled/` as `<source path>__<name>-pNNN.png`. Each file is recorded by hash in
+   `training_data/ingest_manifest.jsonl`, so re-running only processes new files.
+2. **Autolabel.** `autolabel.py` decides per *image*. An image goes to `train/` only if every
+   box on it is accepted. Otherwise it goes to review, with the non-rejected boxes pre-drawn.
+   Pages without any detection go to review too, so schematics the model missed get labeled.
+   Images are moved, so re-running is safe. Uses the threshold stub unless
+   `TYPESAFE_API_KEY` is set.
+3. **Review in Label Studio.** Run it in its own environment (installing it into this venv
+   breaks `cv2`):
+
+   ```bash
+   LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true \
+   LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="$(pwd)" \
+   uvx label-studio start
+   ```
+
+   Run this from the repo root. Create a project with the *Object Detection with Bounding
+   Boxes* template and set its label to `schematic` (it must match `names` in
+   `training_data/data.yaml`). Import `training_data/review_queue/label_studio_tasks.json`.
+   Correct, add or delete boxes and submit each task. Submitting a task with no boxes
+   confirms the page as a background image (no schematic).
+
+   If images don't load, add a *Local Files* source storage in the project settings with
+   the absolute path of `training_data/review_queue/images` (don't sync it; it only grants
+   access). Label Studio's docs aren't clear on whether this is needed for imported tasks.
+4. **Import.** Export the project as **JSON** (not YOLO) and run
+   `import_reviewed.py <export.json> --dry-run`, then without `--dry-run`. Reviewed images
+   move to `train/` or `val/` with YOLO labels, and their tasks are removed from the queue.
+   Unreviewed tasks stay. An unknown label name aborts the import before anything moves.
+5. **Retrain** with `scripts/train.py`.
 
 ## 🎯 Autocompletion Setup
 

@@ -24,7 +24,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="Autolabel a folder of images using YOLO + Jev (or the threshold stub)"
     )
-    parser.add_argument("source", help="Folder of unlabeled images to autolabel")
+    parser.add_argument(
+        "source",
+        nargs="?",
+        help="Folder of unlabeled images to autolabel (default: training_data/unlabeled/)",
+    )
     parser.add_argument(
         "--model", help="Path to model weights"
     ).completer = argcomplete.completers.FilesCompleter()
@@ -41,7 +45,8 @@ def main():
 
     try:
         pipeline = AutolabelPipeline(model_path=args.model)
-        summary = pipeline.run(args.source, candidate_conf=args.candidate_conf)
+        source = args.source or pipeline.config.UNLABELED_PATH
+        summary = pipeline.run(source, candidate_conf=args.candidate_conf)
 
         print("\n=== Autolabel summary ===")
         for verdict, count in summary.items():

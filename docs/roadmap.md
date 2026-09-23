@@ -9,19 +9,31 @@ surface to revisit and reprioritize.
 1. **Reconcile the uncommitted `training_project/scripts/` changes first** — it's a small,
    contained cleanup (finish or drop the `argcomplete` migration) and gets you to a clean
    working tree before building on top of it.
-2. **Then connect the YOLO model to the PDF pipeline.** This is the highest-leverage next
-   step: the two subsystems (docling conversion in `src/main.py`, the trained detector in
-   `training_project/`) are fully built but never talk to each other. Concretely: render a
-   PDF's pages to images (`pypdfium2`/`pdf2image`, both already dependencies), feed each page
-   through `training_project/src/predictor.py:YOLOPredictor`, and see what the current
-   "schematic" detector actually finds on real datasheet pages. This turns root README step 2
-   from a TODO into a working (if rough) pipeline, and gives concrete, real-world detections
-   to decide whether the dataset/model needs more work before investing further.
+2. ~~Then connect the YOLO model to the PDF pipeline.~~ **Done (2026-09-23)**: `uv run pdf-ocr`
+   (`src/pdf_ocr/`). See "First real-page results" below.
 3. **Only after that, invest in more/better training data.** The current model hits ~0.99
    mAP50 on an 11-image, single-class validation set, which is easy to hit and doesn't say
    much about real-world generalization — testing it against actual rendered datasheet pages
    from step 2 will make it obvious whether more data (root README's KiCAD-scraping /
    autolabeling TODOs) is actually the bottleneck, rather than guessing upfront.
+
+## First real-page results (2026-09-23)
+
+`uv run pdf-ocr` on `input/CEM33403345-VCO.pdf` (6 pages, 200 DPI, conf 0.25, `last.pt`):
+7 detections.
+
+- **Found:** the large block/connection diagrams on pages 1 and 3 and a mid-size figure on
+  page 6.
+- **False positive:** the page 3 header strip (0.31).
+- **Duplicates:** three overlapping boxes on one figure on page 5.
+- **Missed:** the small figures at the top of pages 5 and 6. A full page is shrunk to 640px
+  for YOLO, so small schematics become tiny.
+
+Next experiments, cheapest first:
+1. Raise `imgsz` for inference (e.g. 1280), or tile pages.
+2. Try `best.pt` instead of `last.pt`.
+3. Feed more real datasheet pages through the labeling workflow (`pdf-ocr ingest` →
+   `autolabel.py` → Label Studio → `import_reviewed.py`) to grow the dataset.
 
 ## Near-term (unblock the core pipeline)
 
@@ -41,8 +53,23 @@ surface to revisit and reprioritize.
     Surya-OCR-based alternative worth knowing about if conversion speed becomes a bottleneck.
 - [x] Reconcile the in-progress, uncommitted changes in `training_project/scripts/` — migrated
       from custom bash/zsh completion scripts to standard `argcomplete` global registration.
-- [ ] Turn `src/main.py` from a docling smoke test into an actual pipeline step: run it
-      over more than one hardcoded PDF, and decide on an output/intermediate-representation
+- [x] **PDF → YOLO pipeline (2026-09-23):** `src/pdf_ocr/` package. `pdf-ocr analyse` takes
+      a PDF, an image, or a folder (default `input/`) and writes `output/<name>/` with
+      rendered pages, annotated pages and `detections.json` (boxes in px and PDF points).
+- [x] **Labeling loop closed (2026-09-23):** `pdf-ocr ingest` (`training_data/sources/` →
+      `unlabeled/`, deduplicated by hash). `autolabel.py` now routes whole images (no more
+      partially labeled training images), sends no-detection pages to review so misses get
+      labeled, and moves files so reruns can't duplicate. `import_reviewed.py` brings Label
+      Studio JSON exports back into `train/`/`val/`; `val/` only gets human-reviewed images.
+      Workflow documented in `training_project/README.md`.
+- [x] **Class name typo fixed (2026-09-23):** `schemtaic` → `schematic` in `data.yaml` and in
+      the `best.pt`/`last.pt` weights via `scripts/rename_class.py` (no retraining needed:
+      label files store only class ids).
+- [ ] **Image crawler** writing into `training_data/sources/crawled/<site>/`, recording URL,
+      license and date for every file. Start with clearly licensed sources (KiCad libraries,
+      Wikimedia Commons); manufacturer datasheets are copyrighted, so check each site's terms.
+- [ ] Bring docling (`src/pdf_ocr/docling_convert.py`, still a standalone smoke test) into
+      the pipeline, and extend `detections.json` into the intermediate-representation
       contract for the steps that follow (structure analysis, NLP enrichment).
 - [ ] Wire in OCRmyPDF for scanned/annotated PDFs (already a dependency, not yet called
       from any pipeline code) — `ocrmypdf input.pdf output.pdf --deskew --clean --rotate-pages`.
@@ -64,8 +91,7 @@ surface to revisit and reprioritize.
       `scripts/autolabel.py`. Uses a threshold-stub decider until a real `TYPESAFE_API_KEY`
       is configured; see [`typesafe-integration.md`](./typesafe-integration.md#3-autolabeling-pre-filter-for-yolo-training-data--scaffolded)
       for the corrected design (Jev is text/JSON-only, arbitrates over extracted evidence, not
-      the raw crop). Still needs: a real API key, and a bulk source of new unlabeled images
-      (blocked on "connect YOLO to the PDF pipeline" above) to actually run at scale.
+      the raw crop). Still needs: a real API key, and more source material (see the crawler item above).
       Flagged candidates route to a Label Studio pre-annotated task queue — run Label Studio
       via `uvx label-studio start` (isolated; installing it as a project dependency conflicts
       with the opencv version already required by easyocr/ultralytics, confirmed by testing).

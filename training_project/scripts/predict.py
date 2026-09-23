@@ -33,7 +33,7 @@ def main():
         "--model", help="Path to model weights"
     ).completer = argcomplete.completers.FilesCompleter()
     parser.add_argument(
-        "--img-folder", action="store_true", help="Use main img folder as source"
+        "--img-folder", action="store_true", help="Use training_data/unlabeled/ (unlabeled images) as source"
     )
     parser.add_argument(
         "--show", action="store_true", help="Show a live annotated window (needed for webcam)"
@@ -47,7 +47,7 @@ def main():
 
         # Determine source
         if args.img_folder:
-            source = default_config.PROJECT_ROOT.parent / "img"
+            source = default_config.UNLABELED_PATH
         elif args.source:
             # Ultralytics expects an int index for webcam sources (e.g. "0")
             source = int(args.source) if args.source.isdigit() else args.source

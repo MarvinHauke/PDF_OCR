@@ -52,14 +52,13 @@ class YOLOPredictor:
         self.logger.info("Prediction completed!")
         return results
 
-    def predict_images_folder(self, source_dir, output_dir=None):
+    def predict_images_folder(self, source_dir=None, output_dir=None):
         """Run prediction on all images in a folder"""
-        source_path = Path(source_dir)
-        if not source_path.exists():
-            raise FileNotFoundError(f"Source directory not found: {source_dir}")
-
-        # Use main img folder by default
+        # Use the unlabeled training folder by default
         if source_dir is None:
-            source_dir = self.config.PROJECT_ROOT.parent / "img"
+            source_dir = self.config.UNLABELED_PATH
+
+        if not Path(source_dir).exists():
+            raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
         return self.predict(source_dir, save_dir=output_dir)

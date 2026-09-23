@@ -8,19 +8,26 @@ LLM (via MCP) to help engineers build or repair circuits and PCBs.
 
 The repo currently has two subsystems at different levels of maturity.
 
-## Subsystem 1: PDF-OCR pipeline (repo root)
+## Subsystem 1: PDF pipeline (`src/pdf_ocr/`)
 
-Status: **prototype**. `src/main.py` is currently just a smoke test of `docling`'s
-`DocumentConverter`:
+Status: **early**. An installable package with two commands:
 
-- Loads a hardcoded sample PDF (`input/CEM33403345-VCO.pdf`)
-- Converts it to markdown + dict via docling
-- Writes markdown to `tmp/markdown/file.md`
+- `pdf-ocr analyse [path]` (`pipeline.py`): takes a PDF, an image, or a folder of both
+  (default `input/`). Renders PDF pages to PNG with `pypdfium2` (default 200 DPI,
+  `sources.py`) and runs the training project's `YOLOPredictor` on every page (`detect.py`).
+  Writes `output/<name>/{pages,annotated}/` and `detections.json` with boxes in pixels and
+  PDF points.
+- `pdf-ocr ingest [path]` (`ingest.py`): renders training material from
+  `training_data/sources/` (recursively) into `training_data/unlabeled/`, skipping files
+  already listed by hash in `training_data/ingest_manifest.jsonl`. No detection happens here.
 
-None of the other planned steps from the root `README.md` (OCRmyPDF annotation, PyMuPDF/opencv2
-structure analysis, Spacy/EasyOCR enrichment, YOLO schematic/subcircuit analysis, MCP hand-off
-to an LLM) are wired into this pipeline yet, despite the relevant packages already being
-project dependencies.
+`docling_convert.py` is the old `src/main.py` docling smoke test (writes
+`tmp/markdown/file.md`). It isn't wired into the pipeline yet. OCRmyPDF, Spacy/EasyOCR,
+subcircuit analysis and the MCP hand-off aren't wired in either.
+
+`training_project/` isn't an installed package: its modules import each other as
+`config.*` / `src.*`. So `detect.py` puts `training_project/` at the front of `sys.path`,
+the same way `training_project/scripts/` does.
 
 ## Subsystem 2: YOLO training framework (`training_project/`)
 
@@ -32,6 +39,10 @@ optimized for Apple Silicon (MPS):
 - `scripts/train.py` — CLI for training (device auto-select, config overrides), wraps
   `src/trainer.py:YOLOTrainer`.
 - `scripts/predict.py` — CLI for running predictions, wraps `src/predictor.py:YOLOPredictor`.
+- `scripts/autolabel.py` — routes each image in `training_data/unlabeled/` to `train/`, the
+  Label Studio review queue, or `skipped/`.
+- `scripts/import_reviewed.py` — turns a Label Studio JSON export into `train/`/`val/` labels.
+- `scripts/rename_class.py` — renames a class inside trained weights (no retraining).
 - `scripts/evaluate.py` — **empty stub**, not implemented yet.
 - `training_data/` — labeled dataset plus at least one completed training run
   (`runs/run/` with `best.pt`/`last.pt`, PR/F1/confusion-matrix curves, `results.csv`).
@@ -42,9 +53,9 @@ See [`../training_project/README.md`](../training_project/README.md) for full us
 ## Tech stack
 
 - Package/dependency management: `uv` (`pyproject.toml` + `uv.lock`), Python `>=3.12`.
-- PDF/OCR: `ocrmypdf`, `pymupdf`, `pypdf2`, `pypdfium2`, `pdf2image`, `pytesseract`,
-  `reportlab`, `docling`.
-- CV/ML: `opencv-contrib-python`, `ultralytics` (YOLO), `numpy`. `torch`/`torchvision` are
+- PDF/OCR: `ocrmypdf`, `pypdf`, `pypdfium2`, `pdf2image`, `pytesseract`, `reportlab`,
+  `docling`.
+- CV/ML: `ultralytics` (YOLO, pulls in `opencv-python`), `numpy`. `torch`/`torchvision` are
   pulled in transitively via `ultralytics`.
 - NLP: `spacy`, `spacy-layout`.
 - Dev/misc: `jupyterlab`, `notebook`, `matplotlib`, `argcomplete`, `typer`, `pyyaml`.
