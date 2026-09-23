@@ -15,6 +15,7 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
   - [Page classes](#page-classes)
   - [Subcircuits (stage 2)](#subcircuits-stage-2)
   - [Crawling training material](#crawling-training-material)
+  - [Experiment log](#experiment-log)
 - [Autocompletion Setup](#autocompletion-setup)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -453,6 +454,11 @@ Rules (enforced in `src/pdf_ocr/crawl/base.py`):
   `sources/crawled/` folders; crawling stops cleanly when it's reached.
 - **Provenance.** Every file gets a `sources.jsonl` record: URL, license, author, tier, hint.
 - GitHub without a valid `GITHUB_TOKEN` allows ~20 repos per hour; an invalid token is ignored.
+
+### Experiment log
+
+Training runs, their data state, metrics and conclusions, plus a backlog of untried ideas, are
+kept in [`experiments.md`](experiments.md). Add an entry after every run.
 
 ## 🎯 Autocompletion Setup
 

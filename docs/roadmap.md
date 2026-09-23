@@ -4,36 +4,12 @@ Consolidated from the TODOs already scattered across the root `README.md` and
 `training_project/`, organized by horizon. This isn't a commitment — it's a planning
 surface to revisit and reprioritize.
 
-## Suggested starting point
+## Current focus
 
-1. **Reconcile the uncommitted `training_project/scripts/` changes first** — it's a small,
-   contained cleanup (finish or drop the `argcomplete` migration) and gets you to a clean
-   working tree before building on top of it.
-2. ~~Then connect the YOLO model to the PDF pipeline.~~ **Done (2026-09-23)**: `uv run pdf-ocr`
-   (`src/pdf_ocr/`). See "First real-page results" below.
-3. **Only after that, invest in more/better training data.** On a clean validation split the
-   model reaches mAP50 0.686 (`run2`, see below); the earlier ~0.99 came from val images that
-   were also in train — testing it against actual rendered datasheet pages
-   from step 2 will make it obvious whether more data (root README's KiCAD-scraping /
-   autolabeling TODOs) is actually the bottleneck, rather than guessing upfront.
-
-## First real-page results (2026-09-23)
-
-`uv run pdf-ocr` on `input/CEM33403345-VCO.pdf` (6 pages, 200 DPI, conf 0.25, `last.pt`):
-7 detections.
-
-- **Found:** the large block/connection diagrams on pages 1 and 3 and a mid-size figure on
-  page 6.
-- **False positive:** the page 3 header strip (0.31).
-- **Duplicates:** three overlapping boxes on one figure on page 5.
-- **Missed:** the small figures at the top of pages 5 and 6. A full page is shrunk to 640px
-  for YOLO, so small schematics become tiny.
-
-Next experiments, cheapest first:
-1. Raise `imgsz` for inference (e.g. 1280), or tile pages.
-2. Try `best.pt` instead of `last.pt`.
-3. Feed more real datasheet pages through the labeling workflow (`pdf-ocr ingest` →
-   `autolabel.py` → Label Studio → `import_reviewed.py`) to grow the dataset.
+Grow and clean the training data, then tune training. The pipeline (`pdf-ocr analyse`,
+crawler, Label Studio loop) is in place; model quality is limited by the small dataset.
+Training runs, metrics and experiment ideas are tracked in
+[`training_project/experiments.md`](../training_project/experiments.md), not here.
 
 ## Near-term (unblock the core pipeline)
 
@@ -73,13 +49,8 @@ Next experiments, cheapest first:
 - [x] **Subcircuit stage started (2026-09-23):** `config/subcircuits.yaml` (`power_supply`,
       `amplifier`, `filter`, `oscillator`), `scripts/make_crops.py` (156 crops from the
       labeled pages). First round is manual, since there's no subcircuit model yet.
-- [x] **Validation split fixed (2026-09-23).** All 10 `val/` images were identical copies of
-      `train/` images, plus one duplicate pair inside `train/`. Removed from `train/` (backup in
-      `training_data/backup_2026-09-23_before_split_fix/`): now 47 train / 10 unseen val.
-      Retrained as `runs/run2`: **best mAP50 0.686, mAP50-95 0.541, P 0.74, R 0.70** (epoch 92),
-      compared with the 0.995 the old `run` showed on its contaminated val set. Inference now uses
-      `best.pt` (`use_best_weights: true`), since `run2`'s last epoch only reaches mAP50 0.44.
-      With 10 val images the numbers are rough; grow val with human-reviewed pages.
+- [x] **Validation split fixed (2026-09-23):** val images were duplicates of train images.
+      Inference uses `best.pt` (`use_best_weights: true`). Details in `experiments.md`.
 - [ ] Plug the subcircuit model into `pdf-ocr analyse`: crop detected schematics and add
       subcircuits to `detections.json` (in page and PDF coordinates).
 - [x] **Crawler (2026-09-23):** `pdf-ocr crawl wikimedia|kicad_github|archive_org|urls`, with
@@ -96,13 +67,10 @@ Next experiments, cheapest first:
       (`current_mirror`, `voltage_divider`, `differential_pair`, `emitter_follower`,
       `comparator`, `rectifier`, `inverting_amp`, `non_inverting_amp`, `linear_regulator`),
       nested boxes allowed. Crawler hints for Commons *Voltage dividers* and *Comparators*.
-- [ ] **Retrain with 3 page classes** once the review queue (42 new pages + 8 re-reviews) is
-      labeled. The current weights know only `schematic`.
-- [x] **Resolution experiment (2026-09-24):** `run2_imgsz1280` (same data as `run2`) found the
-      small schematics 640 px misses, but also ~30 false positives on 6 datasheet pages (tables,
-      text columns, margins): val mAP50 0.580 vs 0.686. With 47 training images it doesn't learn
-      enough negatives at 1280. Stay at 640; repeat (also 960) once the dataset has more pages,
-      especially pages without figures.
+- [ ] **Switch inference to a 3-class model** once one beats the single-class `run2` on
+      `schematic` (runs in `experiments.md`).
+- [ ] **Training tuning** (learning rate, augmentations, model size, image size): see the
+      backlog in `experiments.md`. Image size stays 640 px for now.
 - [ ] More service-manual sources: hobby sites (Lojinx, synfo.nl, servicemanual.altervista,
       SynthXL, Vintage Synth Parts), one at a time after checking each site's terms, then add
       the host to `reviewed_hosts`. elektronik-kompendium.de stays blocked unless the operator
