@@ -29,11 +29,14 @@ surface to revisit and reprioritize.
       and `opencv-contrib-python` (both unused directly, and the latter conflicted with
       transitive `opencv-python`). See git log for the full detail of what broke and how it
       was fixed.
-  - Still open: consider `RF-DETR` (Roboflow, Apache-2.0) as an alternative to `ultralytics`
-    YOLO11 (AGPL-3.0) for the schematic-region detector — it transfers well on small custom
-    datasets (Roboflow's RF100-VL benchmark) and sidesteps the AGPL/MIT license mismatch with
-    this repo. This is a bigger, separate effort (different API, requires retraining) — see
-    "Suggested starting point" above; it mainly fixes licensing, not the dataset bottleneck.
+  - **RF-DETR evaluated and deferred (2026-09-23):** investigated as an Apache-2.0 alternative
+    to `ultralytics` YOLO11 (AGPL-3.0). Dataset compatibility is fine (RF-DETR auto-detects
+    this project's existing YOLO-format `training_data/`, no conversion needed), but **Apple
+    Silicon/MPS support is not solid** — an open upstream GitHub issue reports MPS training
+    making a Mac unresponsive followed by a CoreML crash on retry, with no official fix at
+    time of writing; a required op silently falls back to CPU even when it doesn't crash.
+    Decision: stay on YOLO (already fast and working via MPS on this Mac) and revisit RF-DETR
+    once upstream Apple Silicon support matures, rather than risk training stability now.
   - `docling` (MIT) has no strong reason to switch away from; `marker` is a faster
     Surya-OCR-based alternative worth knowing about if conversion speed becomes a bottleneck.
 - [x] Reconcile the in-progress, uncommitted changes in `training_project/scripts/` — migrated
