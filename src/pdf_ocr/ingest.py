@@ -6,7 +6,8 @@
 No detection happens here; training_project/scripts/autolabel.py picks the
 pages up from unlabeled/. Every ingested file is recorded by content hash in
 training_data/ingest_manifest.jsonl, so re-running only processes new files
-and each page can be traced back to where it came from.
+and each page can be traced back to where it came from, including the
+crawler's license tier (free/restricted) when the file came from a crawl.
 """
 
 import hashlib
@@ -21,7 +22,7 @@ from pdf_ocr.sources import collect_sources, prepare_document
 MANIFEST_NAME = "ingest_manifest.jsonl"
 
 
-def run(sources_dir: Path, unlabeled_dir: Path, dpi: int = 200) -> dict:
+def run(sources_dir: Path, unlabeled_dir: Path, dpi: int = 200, max_pages: int = 30) -> dict:
     sources_dir.mkdir(parents=True, exist_ok=True)
     unlabeled_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = unlabeled_dir.parent / MANIFEST_NAME
@@ -35,11 +36,12 @@ def run(sources_dir: Path, unlabeled_dir: Path, dpi: int = 200) -> dict:
             continue
 
         prefix = _prefix_for(source, sources_dir)
-        pages = _render_to_unlabeled(source, unlabeled_dir, prefix, dpi)
+        pages = _render_to_unlabeled(source, unlabeled_dir, prefix, dpi, max_pages)
 
         entry = {
             "source": str(source.relative_to(sources_dir)),
             "sha256": digest,
+            "tier": _crawl_tier(source),
             "pages": pages,
             "dpi": dpi if source.suffix.lower() == ".pdf" else None,
             "ingested_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -61,9 +63,23 @@ def _prefix_for(source: Path, sources_dir: Path) -> str:
     return "__".join(rel.parts)
 
 
-def _render_to_unlabeled(source: Path, unlabeled_dir: Path, prefix: str, dpi: int) -> list[str]:
+def _crawl_tier(source: Path) -> str | None:
+    """License tier from the crawler's sources.jsonl next to the file (None for manual drops)."""
+    log = source.parent / "sources.jsonl"
+    if not log.exists():
+        return None
+    for line in log.read_text().splitlines():
+        record = json.loads(line) if line.strip() else {}
+        if record.get("file") == source.name:
+            return record.get("tier")
+    return None
+
+
+def _render_to_unlabeled(
+    source: Path, unlabeled_dir: Path, prefix: str, dpi: int, max_pages: int
+) -> list[str]:
     with tempfile.TemporaryDirectory() as tmp:
-        doc = prepare_document(source, Path(tmp), dpi)
+        doc = prepare_document(source, Path(tmp), dpi, max_pages)
         names = []
         for page in doc.pages:
             name = f"{prefix}-p{page.number:03d}.png"

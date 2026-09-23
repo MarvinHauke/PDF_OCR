@@ -20,6 +20,10 @@ Status: **early**. An installable package with two commands:
 - `pdf-ocr ingest [path]` (`ingest.py`): renders training material from
   `training_data/sources/` (recursively) into `training_data/unlabeled/`, skipping files
   already listed by hash in `training_data/ingest_manifest.jsonl`. No detection happens here.
+  `--dataset subcircuits` targets the crop dataset, `--max-pages` caps pages per PDF.
+- `pdf-ocr crawl <source>` (`crawl/`): downloads training material (Wikimedia Commons, KiCad
+  projects on GitHub, archive.org service manuals, a curated URL list) with license tiers,
+  host allow/block lists and a 1 GB cap; settings in `training_project/config/crawl.yaml`.
 
 `docling_convert.py` is the old `src/main.py` docling smoke test (writes
 `tmp/markdown/file.md`). It isn't wired into the pipeline yet. OCRmyPDF, Spacy/EasyOCR,

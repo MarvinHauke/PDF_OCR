@@ -13,6 +13,7 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
 - [Labeling Workflow](#labeling-workflow)
   - [Label Studio setup](#label-studio-setup)
   - [Subcircuits (stage 2)](#subcircuits-stage-2)
+  - [Crawling training material](#crawling-training-material)
 - [Autocompletion Setup](#autocompletion-setup)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -380,6 +381,44 @@ uv run python training_project/scripts/train.py --config config/subcircuits.yaml
 Until the first subcircuit model is trained, `autolabel.py` sends every crop to review
 without boxes and the ML backend returns no pre-labels: the first round is manual.
 `crops_manifest.jsonl` records the parent image and box of each crop.
+
+### Crawling training material
+
+`pdf-ocr crawl <source>` downloads raw material into `sources/crawled/<source>/` of the
+matching dataset; from there it's the normal workflow (`pdf-ocr ingest [--dataset …]` →
+`autolabel.py` → Label Studio). All limits, sources and license rules are in
+`config/crawl.yaml`.
+
+| Source | What | Dataset | Tier |
+|---|---|---|---|
+| `wikimedia` | circuit diagrams from Commons categories, with a class hint per category | subcircuits | `free` |
+| `kicad_github` | open-hardware KiCad projects (`topic:kicad license:<key>`), rendered with `kicad-cli` | subcircuits | `free` |
+| `archive_org` | synthesizer service manual PDFs | pages | mostly `restricted` |
+| `urls` | your list in `training_data/sources/datasheet_urls.txt` | pages | depends |
+
+```bash
+uv run pdf-ocr crawl wikimedia --limit 20 --dry-run   # list what would be downloaded
+uv run pdf-ocr crawl wikimedia --limit 20
+uv run pdf-ocr ingest --dataset subcircuits          # crawled images/sheets -> subcircuits/unlabeled/
+uv run pdf-ocr ingest --max-pages 30                 # crawled PDFs -> unlabeled/ (first 30 pages each)
+```
+
+Rules (enforced in `src/pdf_ocr/crawl/base.py`):
+- **Tiers.** `free` = a license on `free_licenses` (no NC/ND). `restricted` = no usable license,
+  but the host is in `reviewed_hosts` (terms checked by hand) and doesn't opt out of text and
+  data mining in a machine-readable way (`tdm-reservation` header, `/.well-known/tdmrep.json`).
+  Everything else is skipped. `restricted` files are for local training only: `training_data/`
+  is gitignored, and the tier is recorded in `sources.jsonl` and in the ingest manifest.
+- **Blocked hosts** (`blocked_hosts`) are never fetched. elektronik-kompendium.de is there
+  because its imprint reserves text and data mining (§ 44b UrhG) in plain text, which
+  robots.txt doesn't show.
+- **Politeness.** robots.txt for file downloads, documented APIs follow their own usage
+  policies, 1 request/s per host, serial requests, `maxlag` for Wikimedia. Set `contact` in
+  `crawl.yaml`, since Wikimedia asks for contact info in the User-Agent.
+- **Limits.** Per-run counts, per-file size limits, and a **1 GB total cap** for all
+  `sources/crawled/` folders; crawling stops cleanly when it's reached.
+- **Provenance.** Every file gets a `sources.jsonl` record: URL, license, author, tier, hint.
+- GitHub without a valid `GITHUB_TOKEN` allows ~20 repos per hour; an invalid token is ignored.
 
 ## 🎯 Autocompletion Setup
 

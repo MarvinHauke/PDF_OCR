@@ -1,18 +1,10 @@
-"""Run the training project's YOLO detector on page images.
+"""Run the training project's YOLO detector on page images."""
 
-training_project/ is not an installed package: its modules import each other
-as `config.settings` / `src.*`, so it has to sit at the front of sys.path
-(the same approach its own scripts/ use).
-"""
-
-import sys
 from pathlib import Path
 
-TRAINING_PROJECT = Path(__file__).resolve().parents[2] / "training_project"
-if str(TRAINING_PROJECT) not in sys.path:
-    sys.path.insert(0, str(TRAINING_PROJECT))
+from pdf_ocr.training import dataset_config
 
-from config.settings import default_config  # noqa: E402
+from config.settings import default_config  # noqa: E402  (importable via pdf_ocr.training)
 from src.predictor import YOLOPredictor  # noqa: E402
 
 
@@ -29,6 +21,7 @@ class Detector:
         )
 
 
-def training_paths() -> tuple[Path, Path]:
-    """(sources, unlabeled) folders of the training project."""
-    return default_config.SOURCES_PATH, default_config.UNLABELED_PATH
+def training_paths(dataset: str = "pages") -> tuple[Path, Path]:
+    """(sources, unlabeled) folders of a training dataset (pages or subcircuits)."""
+    config = dataset_config(dataset)
+    return config.SOURCES_PATH, config.UNLABELED_PATH

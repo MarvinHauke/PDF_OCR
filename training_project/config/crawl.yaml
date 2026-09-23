@@ -1,0 +1,89 @@
+# config/crawl.yaml
+# Settings for `pdf-ocr crawl <source>` (src/pdf_ocr/crawl/).
+# Crawled files land in training_data/.../sources/crawled/<source>/ (gitignored) with a
+# sources.jsonl provenance record per file: url, license, author, tier, hint.
+
+# Sent in the User-Agent (Wikimedia's API policy asks for a way to reach the operator).
+# Put a URL or email address here if you want one; it is never filled in automatically.
+contact: ""
+
+limits:
+  max_total_gb: 1 # all sources/crawled/ folders together; crawling stops cleanly when reached
+  max_image_mb: 20
+  max_pdf_mb: 50
+  max_tarball_mb: 100 # KiCad repo downloads, deleted after rendering
+  requests_per_second: 1 # per host
+  per_run: # default for --limit
+    wikimedia: 200
+    archive_org: 10
+    kicad_github: 20
+    urls: 50
+
+# Licenses that make a file `free` (normalized: lowercase, spaces -> '-').
+# Prefix match, so "cc-by-sa" also covers "cc-by-sa-4.0". Anything with -nc or -nd is
+# never free. Files without a license are `restricted` if their host is reviewed below,
+# otherwise skipped.
+free_licenses:
+  - public-domain
+  - pd
+  - pdm
+  - cc0
+  - cc-by
+  - cc-by-sa
+  - gfdl
+  - mit
+  - apache-2.0
+  - bsd
+  - isc
+  - gpl
+  - lgpl
+  - cern-ohl
+  - ofl
+
+# Hosts whose terms were checked by hand. Only these may deliver `restricted` material
+# (copyrighted, no license): robots.txt and machine-readable TDM opt-outs are necessary
+# but not sufficient -- some sites only state their reservation in the imprint.
+reviewed_hosts:
+  archive.org:
+    terms_checked: 2026-09-23
+    note: "Service manual scans without license metadata; official API, rate-limited"
+
+# Never fetched, whatever the source or URL list says.
+blocked_hosts:
+  elektronik-kompendium.de:
+    reason: >-
+      Impressum: "Die Autoren von Elektronik-Kompendium.de behält sich die Nutzung ihrer
+      Inhalte zum Zwecke des kommerziellen Text- und Data-Mining im Sinne des § 44b UrhG
+      ausdrücklich vor." Only with the operator's written permission.
+
+wikimedia:
+  dataset: subcircuits # single schematics -> stage-2 dataset
+  max_depth: 1 # subcategory levels to follow
+  render_width: 2000 # PNG render width for SVG files
+  categories: # category -> subcircuit class hint (null = no hint)
+    Amplifier circuits: amplifier
+    Operational amplifier circuit diagrams: amplifier
+    Filter circuits: filter
+    Electronic filters: filter
+    Oscillator circuits: oscillator
+    Electronic oscillators: oscillator
+    Multivibrators: oscillator
+    Power electronic circuits: power_supply
+    Bandgap voltage reference: power_supply
+    Charge pump circuits: power_supply
+    Synthesizer circuits: null
+
+archive_org:
+  dataset: pages # full documents -> page dataset
+  queries:
+    - '"service manual" AND (synthesizer OR synth) AND mediatype:texts'
+
+kicad_github:
+  dataset: subcircuits # full schematic sheets, many blocks per sheet
+  kicad_cli: /Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli
+  # GitHub license keys searched with `topic:kicad license:<key>`; all must be free above
+  licenses: [cern-ohl-s-2.0, cern-ohl-w-2.0, cern-ohl-p-2.0, cc-by-sa-4.0, cc-by-4.0, cc0-1.0, mit, apache-2.0, gpl-3.0]
+
+urls:
+  dataset: pages
+  file: training_data/sources/datasheet_urls.txt # one URL per line, optional "<url> <license>"

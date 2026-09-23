@@ -46,15 +46,18 @@ def page_filename(number: int) -> str:
     return f"page-{number:03d}.png"
 
 
-def prepare_document(source: Path, pages_dir: Path, dpi: int) -> Document:
-    """Render a PDF's pages (or copy a single image) into pages_dir as page-NNN.png."""
+def prepare_document(source: Path, pages_dir: Path, dpi: int, max_pages: int = 0) -> Document:
+    """Render a PDF's pages (or copy a single image) into pages_dir as page-NNN.png.
+
+    max_pages > 0 renders only the first max_pages pages."""
     pages_dir.mkdir(parents=True, exist_ok=True)
 
     if source.suffix.lower() == PDF_SUFFIX:
         doc = Document(source=source, kind="pdf", dpi=dpi)
         pdf = pdfium.PdfDocument(str(source))
         try:
-            for index in range(len(pdf)):
+            count = len(pdf) if max_pages <= 0 else min(len(pdf), max_pages)
+            for index in range(count):
                 page = pdf[index]
                 width_pt, height_pt = page.get_size()
                 image = page.render(scale=dpi / 72).to_pil()

@@ -64,7 +64,9 @@ Each input gets its own folder, which is overwritten on rerun:
 (`bbox_pt`, origin top-left).
 
 Add training material (training): drop PDFs/images into
-`training_project/training_data/sources/manual/` and run `uv run pdf-ocr ingest`. The full
+`training_project/training_data/sources/manual/` and run `uv run pdf-ocr ingest`, or let
+`uv run pdf-ocr crawl <source>` fetch license-checked material (Wikimedia Commons, KiCad
+projects, archive.org service manuals; see `training_project/config/crawl.yaml`). The full
 labeling workflow (ingest → autolabel → Label Studio → import → train) is described in
 [`training_project/README.md`](training_project/README.md) ("Labeling workflow").
 

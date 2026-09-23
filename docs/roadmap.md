@@ -11,9 +11,9 @@ surface to revisit and reprioritize.
    working tree before building on top of it.
 2. ~~Then connect the YOLO model to the PDF pipeline.~~ **Done (2026-09-23)**: `uv run pdf-ocr`
    (`src/pdf_ocr/`). See "First real-page results" below.
-3. **Only after that, invest in more/better training data.** The current model hits ~0.99
-   mAP50 on a 10-image validation set whose images are all duplicates of training images (see
-   below), so it says nothing about real-world generalization — testing it against actual rendered datasheet pages
+3. **Only after that, invest in more/better training data.** On a clean validation split the
+   model reaches mAP50 0.686 (`run2`, see below); the earlier ~0.99 came from val images that
+   were also in train — testing it against actual rendered datasheet pages
    from step 2 will make it obvious whether more data (root README's KiCAD-scraping /
    autolabeling TODOs) is actually the bottleneck, rather than guessing upfront.
 
@@ -73,15 +73,23 @@ Next experiments, cheapest first:
 - [x] **Subcircuit stage started (2026-09-23):** `config/subcircuits.yaml` (`power_supply`,
       `amplifier`, `filter`, `oscillator`), `scripts/make_crops.py` (156 crops from the
       labeled pages). First round is manual, since there's no subcircuit model yet.
-- [ ] **Fix the page dataset's validation split.** All 10 `val/` images are identical copies of
-      `train/` images (found by `make_crops.py`: 10 duplicate crop names). The ~0.99 mAP50 is
-      therefore measured on training images and says little. Move or replace them with
-      unseen, human-reviewed pages (e.g. from `import_reviewed.py`), then retrain.
+- [x] **Validation split fixed (2026-09-23).** All 10 `val/` images were identical copies of
+      `train/` images, plus one duplicate pair inside `train/`. Removed from `train/` (backup in
+      `training_data/backup_2026-09-23_before_split_fix/`): now 47 train / 10 unseen val.
+      Retrained as `runs/run2`: **best mAP50 0.686, mAP50-95 0.541, P 0.74, R 0.70** (epoch 92),
+      compared with the 0.995 the old `run` showed on its contaminated val set. Inference now uses
+      `best.pt` (`use_best_weights: true`), since `run2`'s last epoch only reaches mAP50 0.44.
+      With 10 val images the numbers are rough; grow val with human-reviewed pages.
 - [ ] Plug the subcircuit model into `pdf-ocr analyse`: crop detected schematics and add
       subcircuits to `detections.json` (in page and PDF coordinates).
-- [ ] **Image crawler** writing into `training_data/sources/crawled/<site>/`, recording URL,
-      license and date for every file. Start with clearly licensed sources (KiCad libraries,
-      Wikimedia Commons); manufacturer datasheets are copyrighted, so check each site's terms.
+- [x] **Crawler (2026-09-23):** `pdf-ocr crawl wikimedia|kicad_github|archive_org|urls`, with
+      free/restricted license tiers, reviewed/blocked host lists, robots.txt + TDM opt-out checks,
+      a 1 GB total cap and provenance per file (`training_project/config/crawl.yaml`).
+      `pdf-ocr ingest` gained `--dataset subcircuits` and `--max-pages`.
+- [ ] More service-manual sources: hobby sites (Lojinx, synfo.nl, servicemanual.altervista,
+      SynthXL, Vintage Synth Parts), one at a time after checking each site's terms, then add
+      the host to `reviewed_hosts`. elektronik-kompendium.de stays blocked unless the operator
+      gives permission.
 - [ ] Bring docling (`src/pdf_ocr/docling_convert.py`, still a standalone smoke test) into
       the pipeline, and extend `detections.json` into the intermediate-representation
       contract for the steps that follow (structure analysis, NLP enrichment).
