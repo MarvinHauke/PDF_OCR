@@ -1,7 +1,15 @@
 # Proposal: TypeSafe AI (Jev) integration
 
-> **Status: proposal only.** Nothing here has been implemented — no dependency added, no code
-> written. This lays out concrete integration points to evaluate before committing to it.
+> **Status (2026-09-23): item 3 (autolabeling pre-filter) is scaffolded** in
+> `training_project/src/decisions.py` / `autolabeler.py`, using a threshold-based stub decider
+> until a `TYPESAFE_API_KEY` exists — see that section below for the corrected design. Items
+> 1, 2, 4, 5 are still proposal-only.
+
+**Important correction (2026-09-23):** Jev's `state` input is **text/JSON only** — TypeSafe's
+own model docs are explicit: "No image, audio, or video input" (current version 1.13). Jev
+cannot look at a cropped image directly; every integration point below has to feed it
+*structured evidence about* an image/document, not the pixels themselves. Section 3 was
+originally written assuming visual input and has been corrected.
 
 ## What TypeSafe AI is
 
@@ -61,14 +69,28 @@ component datasheet vs. something else) right after ingestion, and route it to t
 appropriate downstream processing branch. This turns "analyse the structure of PDFs" (root
 README step 2) into a dispatch step instead of one fixed pipeline for every PDF type.
 
-### 3. Autolabeling pre-filter for YOLO training data
+### 3. Autolabeling pre-filter for YOLO training data — **scaffolded**
 
 The root README's open TODO — "build an autolabeling image pipeline from the current trained
-model" — is a natural fit for `Score`/`Noul` as a cheap sanity check: after the trained YOLO
-model proposes a bounding box/label for a cropped region, ask Jev "does this crop plausibly
-match the proposed label" before accepting it into the training set. This adds a
-confidence-aware human-review queue (low-confidence proposals get flagged) without needing a
-full LLM call per candidate label.
+model" — is implemented in `training_project/src/`:
+
+- `features.py` extracts cheap, non-ML evidence per YOLO candidate: confidence, box geometry
+  (aspect ratio, area fraction), and classical-CV descriptors (edge density, Hough line count)
+  that help distinguish line-art (schematics) from noise/photos — no vision model or LLM call.
+- `decisions.py` sends that evidence as JSON `state` to Jev with a `Choice` question
+  (`accept` / `flag_for_review` / `reject`), falling back to a `ThresholdStubDecider` (plain
+  YOLO-confidence thresholds) when `TYPESAFE_API_KEY` isn't set, so the rest of the pipeline
+  is testable without a TypeSafe account.
+- `autolabeler.py` routes `accept` straight into `training_data/train/` (YOLO label format),
+  and `flag_for_review` into a Label Studio pre-annotated task queue
+  (`training_data/review_queue/label_studio_tasks.json` — full image + pre-drawn box, not an
+  isolated crop, so a human reviewer has page context and can drag-correct) plus an
+  `evidence_log.jsonl` audit trail for later threshold tuning.
+- `scripts/autolabel.py` is the CLI entry point.
+
+Not yet done: wiring a real `TYPESAFE_API_KEY` (still using the stub), and there's still no
+bulk source of new unlabeled images to run this over at scale — see roadmap.md's "connect
+YOLO to the PDF pipeline" step, which is what would actually feed this.
 
 ### 4. Pre-LLM routing gate (before the planned MCP hand-off)
 

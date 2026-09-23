@@ -59,10 +59,16 @@ surface to revisit and reprioritize.
       (root README TODO).
 - [ ] Evaluate ImageMagick for cropping images out of PDFs for training data (root README TODO).
 - [ ] Scrape a KiCAD database/library for additional training data (root README TODO).
-- [ ] Build an autolabeling image pipeline from the currently trained model (root README TODO)
-      — see [`typesafe-integration.md`](./typesafe-integration.md) for a proposed pre-filter
-      using Jev's `Score`/`Noul` primitives to sanity-check auto-generated labels before they
-      enter the training set.
+- [x] **Autolabeling image pipeline (scaffolded 2026-09-23)** — root README TODO, built as
+      `training_project/src/{features,decisions,autolabeler}.py` +
+      `scripts/autolabel.py`. Uses a threshold-stub decider until a real `TYPESAFE_API_KEY`
+      is configured; see [`typesafe-integration.md`](./typesafe-integration.md#3-autolabeling-pre-filter-for-yolo-training-data--scaffolded)
+      for the corrected design (Jev is text/JSON-only, arbitrates over extracted evidence, not
+      the raw crop). Still needs: a real API key, and a bulk source of new unlabeled images
+      (blocked on "connect YOLO to the PDF pipeline" above) to actually run at scale.
+      Flagged candidates route to a Label Studio pre-annotated task queue — run Label Studio
+      via `uvx label-studio start` (isolated; installing it as a project dependency conflicts
+      with the opencv version already required by easyocr/ultralytics, confirmed by testing).
 
 ## Long-term (schematic analysis + LLM hand-off)
 
