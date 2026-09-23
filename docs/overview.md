@@ -43,6 +43,10 @@ optimized for Apple Silicon (MPS):
   Label Studio review queue, or `skipped/`.
 - `scripts/import_reviewed.py` — turns a Label Studio JSON export into `train/`/`val/` labels.
 - `scripts/rename_class.py` — renames a class inside trained weights (no retraining).
+- `scripts/make_crops.py` + `config/subcircuits.yaml` — second dataset: functional subcircuit
+  blocks inside schematic crops.
+- `scripts/start_label_studio.sh`, `scripts/setup_label_studio.py`, `labelstudio/` — Label
+  Studio setup, labeling configs and our own ML backend (see `training_project/README.md`).
 - `scripts/evaluate.py` — **empty stub**, not implemented yet.
 - `training_data/` — labeled dataset plus at least one completed training run
   (`runs/run/` with `best.pt`/`last.pt`, PR/F1/confusion-matrix curves, `results.csv`).

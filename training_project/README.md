@@ -11,6 +11,8 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
 - [Configuration](#configuration)
 - [Training](#training)
 - [Labeling Workflow](#labeling-workflow)
+  - [Label Studio setup](#label-studio-setup)
+  - [Subcircuits (stage 2)](#subcircuits-stage-2)
 - [Autocompletion Setup](#autocompletion-setup)
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -308,29 +310,76 @@ training_data/unlabeled/             rendered pages, not yet processed
    Pages without any detection go to review too, so schematics the model missed get labeled.
    Images are moved, so re-running is safe. Uses the threshold stub unless
    `TYPESAFE_API_KEY` is set.
-3. **Review in Label Studio.** Run it in its own environment (installing it into this venv
-   breaks `cv2`):
-
-   ```bash
-   LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true \
-   LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT="$(pwd)" \
-   uvx label-studio start
-   ```
-
-   Run this from the repo root. Create a project with the *Object Detection with Bounding
-   Boxes* template and set its label to `schematic` (it must match `names` in
-   `training_data/data.yaml`). Import `training_data/review_queue/label_studio_tasks.json`.
-   Correct, add or delete boxes and submit each task. Submitting a task with no boxes
-   confirms the page as a background image (no schematic).
-
-   If images don't load, add a *Local Files* source storage in the project settings with
-   the absolute path of `training_data/review_queue/images` (don't sync it; it only grants
-   access). Label Studio's docs aren't clear on whether this is needed for imported tasks.
+3. **Review in Label Studio.** See [Label Studio setup](#label-studio-setup) below. Correct,
+   add or delete boxes and submit each task. Submitting a task with no boxes confirms the
+   image as a background image.
 4. **Import.** Export the project as **JSON** (not YOLO) and run
    `import_reviewed.py <export.json> --dry-run`, then without `--dry-run`. Reviewed images
    move to `train/` or `val/` with YOLO labels, and their tasks are removed from the queue.
    Unreviewed tasks stay. An unknown label name aborts the import before anything moves.
 5. **Retrain** with `scripts/train.py`.
+
+### Label Studio setup
+
+Three processes, each in its own terminal, all from the repo root:
+
+```bash
+# 1. Label Studio (own uvx environment; installing it into this venv breaks cv2)
+training_project/scripts/start_label_studio.sh
+
+# 2. ML backend: pre-labels tasks with our YOLO models (runs in this venv, uses MPS)
+uv run python training_project/labelstudio/ml_backend.py
+
+# 3. Once: create/update projects, storage, backend connection and import new tasks.
+#    Re-run after every autolabel.py / make_crops.py run; it only imports new tasks.
+uv run python training_project/scripts/setup_label_studio.py
+```
+
+`setup_label_studio.py` needs a personal access token (*Account & Settings → Personal Access
+Token*) in `LABEL_STUDIO_API_KEY`. Put `export LABEL_STUDIO_API_KEY="<token>"` in the repo's
+gitignored `.envrc` and run `direnv allow`; never commit it.
+
+It sets up two projects:
+
+| Project | Labeling config | Tasks from | Pre-labels from |
+|---|---|---|---|
+| Schematics (pages) | `labelstudio/schematics.xml` | `training_data/review_queue/` | page model |
+| Subcircuits (crops) | `labelstudio/subcircuits.xml` | `training_data/subcircuits/review_queue/` | subcircuit model, once trained |
+
+Things that are easy to get wrong, and why the script handles them:
+- **Images only load with a Local Files storage.** Label Studio (checked in 1.23) serves
+  `/data/local-files/?d=…` only if the project has a Local Files storage whose path contains
+  the file; otherwise you get "There was an issue loading URL from $image value". The script
+  adds one for `training_data/` without syncing it (syncing would create a task per file).
+- **The document root must be the repo root**, because task URLs are repo-relative.
+  `start_label_studio.sh` sets it.
+- **Label names must match `data.yaml`.** The XML configs do.
+
+The ML backend (`labelstudio/ml_backend.py`) implements Label Studio's ML backend protocol
+directly instead of using the `label-studio-ml` package, whose SDK dependency needs
+`opencv-python-headless` (the same `cv2` conflict). Label Studio asks it for predictions when
+you open a task that has none. It picks the model whose class names match the project's
+labels and reloads weights after retraining.
+
+### Subcircuits (stage 2)
+
+Functional blocks (`power_supply`, `amplifier`, `filter`, `oscillator`) are labeled on
+schematic crops, not full pages, so small details stay readable. The dataset lives in
+`training_data/subcircuits/` and is configured by `config/subcircuits.yaml`:
+
+```bash
+# Crop every labeled schematic from the page dataset (train/ + val/) into subcircuits/unlabeled/
+uv run python training_project/scripts/make_crops.py
+# Same workflow as the page dataset, with --config
+uv run python training_project/scripts/autolabel.py --config config/subcircuits.yaml
+uv run python training_project/scripts/setup_label_studio.py --project subcircuits
+uv run python training_project/scripts/import_reviewed.py export.json --config config/subcircuits.yaml
+uv run python training_project/scripts/train.py --config config/subcircuits.yaml
+```
+
+Until the first subcircuit model is trained, `autolabel.py` sends every crop to review
+without boxes and the ML backend returns no pre-labels: the first round is manual.
+`crops_manifest.jsonl` records the parent image and box of each crop.
 
 ## 🎯 Autocompletion Setup
 

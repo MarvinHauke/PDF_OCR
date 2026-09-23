@@ -1,0 +1,7 @@
+<View>
+  <Header value="Draw a box around every schematic on the page. Submit without boxes if there is none."/>
+  <Image name="image" value="$image" zoom="true"/>
+  <RectangleLabels name="label" toName="image">
+    <Label value="schematic" background="#1f77b4"/>
+  </RectangleLabels>
+</View>

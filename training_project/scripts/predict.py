@@ -12,9 +12,10 @@ import argcomplete
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from config.settings import default_config
+from config.settings import Config, default_config
 
 from src.predictor import YOLOPredictor
+from src.utils import config_file_completer
 
 
 def main():
@@ -26,9 +27,11 @@ def main():
     parser.add_argument(
         "--conf",
         type=float,
-        default=default_config.CONFIDENCE_THRESHOLD,
-        help="Confidence threshold",
+        help="Confidence threshold (default: from config)",
     )
+    parser.add_argument(
+        "--config", help="Configuration YAML (default: config/config.yaml)"
+    ).completer = config_file_completer
     parser.add_argument(
         "--model", help="Path to model weights"
     ).completer = argcomplete.completers.FilesCompleter()
@@ -43,11 +46,12 @@ def main():
     args = parser.parse_args()
 
     try:
-        predictor = YOLOPredictor(model_path=args.model)
+        config = Config(config_file=args.config) if args.config else default_config
+        predictor = YOLOPredictor(config=config, model_path=args.model)
 
         # Determine source
         if args.img_folder:
-            source = default_config.UNLABELED_PATH
+            source = config.UNLABELED_PATH
         elif args.source:
             # Ultralytics expects an int index for webcam sources (e.g. "0")
             source = int(args.source) if args.source.isdigit() else args.source

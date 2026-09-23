@@ -17,8 +17,11 @@ class Config:
         # Base paths
         self.PROJECT_ROOT = Path(__file__).parent.parent  # training_project/
 
-        # Load configuration from YAML
+        # Load configuration from YAML. A relative path works from the current
+        # directory or from training_project/ (e.g. "config/subcircuits.yaml")
         config_path = config_file or (self.PROJECT_ROOT / "config" / "config.yaml")
+        if not Path(config_path).exists() and (self.PROJECT_ROOT / config_path).exists():
+            config_path = self.PROJECT_ROOT / config_path
         self._load_config(config_path)
 
         # Set up computed paths

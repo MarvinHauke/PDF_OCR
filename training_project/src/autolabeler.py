@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config.settings import default_config
+from PIL import Image
 from ultralytics import YOLO
 
 from src.decisions import get_decider
@@ -45,6 +46,36 @@ from src.features import extract_evidence
 from src.utils import setup_logging
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
+
+
+def local_files_url(image_path: Path, document_root: Path) -> str:
+    """Label Studio local-files URL for an image under the document root (repo root)."""
+    rel_path = Path(image_path).resolve().relative_to(document_root)
+    return f"/data/local-files/?d={rel_path}"
+
+
+def to_label_studio_result(
+    result_id: str, xyxy, label: str, w_img: int, h_img: int, from_name: str, to_name: str
+) -> dict:
+    """One rectanglelabels region; Label Studio stores boxes as percentages."""
+    x1, y1, x2, y2 = xyxy
+    return {
+        "id": result_id,
+        "type": "rectanglelabels",
+        "from_name": from_name,
+        "to_name": to_name,
+        "original_width": w_img,
+        "original_height": h_img,
+        "image_rotation": 0,
+        "value": {
+            "x": x1 / w_img * 100,
+            "y": y1 / h_img * 100,
+            "width": (x2 - x1) / w_img * 100,
+            "height": (y2 - y1) / h_img * 100,
+            "rotation": 0,
+            "rectanglelabels": [label],
+        },
+    }
 
 
 class AutolabelPipeline:
@@ -57,10 +88,15 @@ class AutolabelPipeline:
         self.decider = decider or get_decider(self.config)
 
         weights = model_path or self.config.get_weights_path()
-        if not Path(weights).exists():
-            raise FileNotFoundError(f"No trained model found at {weights}")
-        self.model = YOLO(str(weights))
-        self.class_names = self.model.names
+        if Path(weights).exists():
+            self.model = YOLO(str(weights))
+            self.class_names = self.model.names
+        else:
+            # First round of a new dataset (e.g. subcircuits): there is nothing to
+            # pre-label with yet, so every image goes to review without boxes
+            self.model = None
+            self.class_names = {}
+            self.logger.warning(f"No trained model at {weights}: sending all images to review")
 
         # Document root Label Studio's local-files serving must be pointed at
         self.document_root = self.config.PROJECT_ROOT.parent
@@ -94,6 +130,17 @@ class AutolabelPipeline:
         review_tasks = []
         evidence_log = []
         run_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+        if self.model is None:
+            for image_path in images:
+                moved = self._move(image_path, self.review_images_dir)
+                with Image.open(moved) as img:
+                    shape = (img.height, img.width)
+                review_tasks.append(self._to_label_studio_task(moved, shape, []))
+                summary["to_review"] += 1
+            if review_tasks:
+                self._write_review_tasks(review_tasks)
+            return summary
 
         for image_path in images:
             results = self.model.predict(source=str(image_path), conf=candidate_conf, verbose=False)
@@ -195,9 +242,7 @@ class AutolabelPipeline:
         every flagged box on it. See module docstring for the local-files
         serving setup this depends on."""
         h_img, w_img = image_shape[:2]
-        rel_path = image_path.resolve().relative_to(self.document_root)
-
-        task = {"data": {"image": f"/data/local-files/?d={rel_path}"}}
+        task = {"data": {"image": local_files_url(image_path, self.document_root)}}
         if not flagged:
             # No pre-drawn boxes: the reviewer draws any schematic the model missed,
             # or submits empty to confirm the page as a background sample
@@ -206,25 +251,11 @@ class AutolabelPipeline:
         results = []
         avg_score = 0.0
         for i, (xyxy, cls_name, decision) in enumerate(flagged):
-            x1, y1, x2, y2 = xyxy
             results.append(
-                {
-                    "id": f"result_{i}",
-                    "type": "rectanglelabels",
-                    "from_name": self.label_studio_from_name,
-                    "to_name": self.label_studio_to_name,
-                    "original_width": w_img,
-                    "original_height": h_img,
-                    "image_rotation": 0,
-                    "value": {
-                        "x": x1 / w_img * 100,
-                        "y": y1 / h_img * 100,
-                        "width": (x2 - x1) / w_img * 100,
-                        "height": (y2 - y1) / h_img * 100,
-                        "rotation": 0,
-                        "rectanglelabels": [cls_name],
-                    },
-                }
+                to_label_studio_result(
+                    f"result_{i}", xyxy, cls_name, w_img, h_img,
+                    self.label_studio_from_name, self.label_studio_to_name,
+                )
             )
             avg_score += decision.score
         avg_score /= len(flagged)

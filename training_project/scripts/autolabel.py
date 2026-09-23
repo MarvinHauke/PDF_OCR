@@ -17,7 +17,10 @@ import argcomplete
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
+from config.settings import Config
+
 from src.autolabeler import AutolabelPipeline
+from src.utils import config_file_completer
 
 
 def main():
@@ -29,6 +32,9 @@ def main():
         nargs="?",
         help="Folder of unlabeled images to autolabel (default: training_data/unlabeled/)",
     )
+    parser.add_argument(
+        "--config", help="Configuration YAML (default: config/config.yaml)"
+    ).completer = config_file_completer
     parser.add_argument(
         "--model", help="Path to model weights"
     ).completer = argcomplete.completers.FilesCompleter()
@@ -44,7 +50,8 @@ def main():
     args = parser.parse_args()
 
     try:
-        pipeline = AutolabelPipeline(model_path=args.model)
+        config = Config(config_file=args.config) if args.config else None
+        pipeline = AutolabelPipeline(config=config, model_path=args.model)
         source = args.source or pipeline.config.UNLABELED_PATH
         summary = pipeline.run(source, candidate_conf=args.candidate_conf)
 

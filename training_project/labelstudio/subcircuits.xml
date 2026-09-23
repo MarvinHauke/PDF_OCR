@@ -1,0 +1,10 @@
+<View>
+  <Header value="Draw a box around every functional block in this schematic. Submit without boxes if there is none."/>
+  <Image name="image" value="$image" zoom="true"/>
+  <RectangleLabels name="label" toName="image">
+    <Label value="power_supply" background="#d62728" hotkey="1"/>
+    <Label value="amplifier" background="#2ca02c" hotkey="2"/>
+    <Label value="filter" background="#ff7f0e" hotkey="3"/>
+    <Label value="oscillator" background="#9467bd" hotkey="4"/>
+  </RectangleLabels>
+</View>

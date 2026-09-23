@@ -28,7 +28,9 @@ import yaml
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-from config.settings import default_config
+from config.settings import Config, default_config
+
+from src.utils import config_file_completer
 
 
 def load_class_ids(yaml_path: Path) -> dict[str, int]:
@@ -86,9 +88,11 @@ def main():
         "export", help="Label Studio JSON export file"
     ).completer = argcomplete.completers.FilesCompleter()
     parser.add_argument(
+        "--config", help="Configuration YAML (default: config/config.yaml)"
+    ).completer = config_file_completer
+    parser.add_argument(
         "--val-fraction",
         type=float,
-        default=default_config.VAL_FRACTION,
         help="Share of images that go to val/ (default: autolabel.val_fraction)",
     )
     parser.add_argument("--dry-run", action="store_true", help="Only print what would happen")
@@ -96,7 +100,8 @@ def main():
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
-    config = default_config
+    config = Config(config_file=args.config) if args.config else default_config
+    val_fraction = args.val_fraction if args.val_fraction is not None else config.VAL_FRACTION
     repo_root = config.PROJECT_ROOT.parent
     review_dir = config.TRAINING_DATA_PATH / "review_queue"
     tasks_path = review_dir / "label_studio_tasks.json"
@@ -129,7 +134,7 @@ def main():
             counts["missing"] += 1
             continue
 
-        split = pick_split(image_path.name, args.val_fraction)
+        split = pick_split(image_path.name, val_fraction)
         images_dir = config.TRAINING_DATA_PATH / split / "images"
         labels_dir = config.TRAINING_DATA_PATH / split / "labels"
         print(f"{image_path.name} -> {split}/ ({len(lines)} box(es))")

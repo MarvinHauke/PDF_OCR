@@ -11,6 +11,16 @@ def setup_logging(level=logging.INFO):
     return logging.getLogger(__name__)
 
 
+def config_file_completer(prefix, parsed_args, **kwargs):
+    """argcomplete completer for training_project/config/*.yaml"""
+    config_dir = Path(__file__).parent.parent / "config"
+    return [
+        f"config/{f.name}"
+        for f in config_dir.glob("*.yaml")
+        if f.name.startswith(prefix.split("/")[-1])
+    ]
+
+
 def ensure_dir(path):
     """Ensure directory exists"""
     Path(path).mkdir(parents=True, exist_ok=True)

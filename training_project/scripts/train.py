@@ -23,19 +23,7 @@ sys.path.append(str(PROJECT_ROOT))
 from config.settings import Config
 
 from src.trainer import YOLOTrainer
-
-
-def config_file_completer(prefix, parsed_args, **kwargs):
-    """Completer for configuration files"""
-    config_dir = PROJECT_ROOT / "config"
-    if config_dir.exists():
-        yaml_files = list(config_dir.glob("*.yaml"))
-        return [
-            f"config/{f.name}"
-            for f in yaml_files
-            if f.name.startswith(prefix.split("/")[-1])
-        ]
-    return []
+from src.utils import config_file_completer
 
 
 def model_completer(prefix, parsed_args, **kwargs):

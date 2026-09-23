@@ -12,8 +12,8 @@ surface to revisit and reprioritize.
 2. ~~Then connect the YOLO model to the PDF pipeline.~~ **Done (2026-09-23)**: `uv run pdf-ocr`
    (`src/pdf_ocr/`). See "First real-page results" below.
 3. **Only after that, invest in more/better training data.** The current model hits ~0.99
-   mAP50 on an 11-image, single-class validation set, which is easy to hit and doesn't say
-   much about real-world generalization — testing it against actual rendered datasheet pages
+   mAP50 on a 10-image validation set whose images are all duplicates of training images (see
+   below), so it says nothing about real-world generalization — testing it against actual rendered datasheet pages
    from step 2 will make it obvious whether more data (root README's KiCAD-scraping /
    autolabeling TODOs) is actually the bottleneck, rather than guessing upfront.
 
@@ -65,6 +65,20 @@ Next experiments, cheapest first:
 - [x] **Class name typo fixed (2026-09-23):** `schemtaic` → `schematic` in `data.yaml` and in
       the `best.pt`/`last.pt` weights via `scripts/rename_class.py` (no retraining needed:
       label files store only class ids).
+- [x] **Label Studio environment (2026-09-23):** `scripts/start_label_studio.sh`,
+      `scripts/setup_label_studio.py` (projects, Local Files storage, backend, deduplicated
+      task import via the API) and `labelstudio/ml_backend.py` (own implementation of the ML
+      backend protocol, since `label-studio-ml` needs `opencv-python-headless`). Two projects:
+      schematics on pages, subcircuits on crops.
+- [x] **Subcircuit stage started (2026-09-23):** `config/subcircuits.yaml` (`power_supply`,
+      `amplifier`, `filter`, `oscillator`), `scripts/make_crops.py` (156 crops from the
+      labeled pages). First round is manual, since there's no subcircuit model yet.
+- [ ] **Fix the page dataset's validation split.** All 10 `val/` images are identical copies of
+      `train/` images (found by `make_crops.py`: 10 duplicate crop names). The ~0.99 mAP50 is
+      therefore measured on training images and says little. Move or replace them with
+      unseen, human-reviewed pages (e.g. from `import_reviewed.py`), then retrain.
+- [ ] Plug the subcircuit model into `pdf-ocr analyse`: crop detected schematics and add
+      subcircuits to `detections.json` (in page and PDF coordinates).
 - [ ] **Image crawler** writing into `training_data/sources/crawled/<site>/`, recording URL,
       license and date for every file. Start with clearly licensed sources (KiCad libraries,
       Wikimedia Commons); manufacturer datasheets are copyrighted, so check each site's terms.
