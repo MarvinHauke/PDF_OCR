@@ -31,7 +31,13 @@ from config.settings import Config
 from src.autolabeler import IMAGE_SUFFIXES
 from src.utils import config_file_completer
 
-SUBCIRCUIT_CLASSES = ["power_supply", "amplifier", "filter", "oscillator"]
+SUBCIRCUIT_CLASSES = [
+    # functional blocks: what a region does (ids 0-3)
+    "power_supply", "amplifier", "filter", "oscillator",
+    # building blocks: how it's built, usually nested inside a functional block
+    "current_mirror", "voltage_divider", "differential_pair", "emitter_follower",
+    "comparator", "rectifier", "inverting_amp", "non_inverting_amp", "linear_regulator",
+]
 CROP_CLASS = "schematic"
 
 

@@ -1,10 +1,19 @@
 <View>
-  <Header value="Draw a box around every functional block in this schematic. Submit without boxes if there is none."/>
+  <Header value="Functional blocks (1-4): box the whole region that does the job. Building blocks (5-9, q-u): box the few components that form the topology, also inside a functional block (boxes may nest). Submit without boxes if there is none."/>
   <Image name="image" value="$image" zoom="true"/>
   <RectangleLabels name="label" toName="image">
     <Label value="power_supply" background="#d62728" hotkey="1"/>
     <Label value="amplifier" background="#2ca02c" hotkey="2"/>
     <Label value="filter" background="#ff7f0e" hotkey="3"/>
     <Label value="oscillator" background="#9467bd" hotkey="4"/>
+    <Label value="current_mirror" background="#8c564b" hotkey="5"/>
+    <Label value="voltage_divider" background="#e377c2" hotkey="6"/>
+    <Label value="differential_pair" background="#7f7f7f" hotkey="7"/>
+    <Label value="emitter_follower" background="#bcbd22" hotkey="8"/>
+    <Label value="comparator" background="#17becf" hotkey="9"/>
+    <Label value="rectifier" background="#393b79" hotkey="q"/>
+    <Label value="inverting_amp" background="#637939" hotkey="w"/>
+    <Label value="non_inverting_amp" background="#8c6d31" hotkey="e"/>
+    <Label value="linear_regulator" background="#843c39" hotkey="r"/>
   </RectangleLabels>
 </View>

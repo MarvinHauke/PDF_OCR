@@ -388,8 +388,17 @@ uv run python training_project/scripts/setup_label_studio.py
 
 ### Subcircuits (stage 2)
 
-Functional blocks (`power_supply`, `amplifier`, `filter`, `oscillator`) are labeled on
-schematic crops, not full pages, so small details stay readable. The dataset lives in
+Subcircuits are labeled on schematic crops, not full pages, so small details stay readable.
+There are two kinds of classes, and boxes may nest (e.g. an `amplifier` box around a stage and a
+`current_mirror` box around two of its transistors):
+
+| Kind | Classes | Hotkeys |
+|---|---|---|
+| Functional blocks: what a region does | `power_supply`, `amplifier`, `filter`, `oscillator` | 1–4 |
+| Building blocks: how it's built | `current_mirror`, `voltage_divider`, `differential_pair`, `emitter_follower`, `comparator`, `rectifier`, `inverting_amp`, `non_inverting_amp`, `linear_regulator` | 5–9, q–r |
+
+Each class needs roughly 50–100 examples before it's detected reliably, so rare classes will
+lag behind; add more classes only once the common ones are covered. The dataset lives in
 `training_data/subcircuits/` and is configured by `config/subcircuits.yaml`:
 
 ```bash

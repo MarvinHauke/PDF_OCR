@@ -72,6 +72,8 @@ wikimedia:
     Power electronic circuits: power_supply
     Bandgap voltage reference: power_supply
     Charge pump circuits: power_supply
+    Voltage dividers: voltage_divider
+    Comparators: comparator
     Synthesizer circuits: null
 
 # Block diagrams are page-level figures like schematics (class block_diagram in the page

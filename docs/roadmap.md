@@ -92,10 +92,17 @@ Next experiments, cheapest first:
       `import_reviewed.py` to re-check images already in `train/`/`val/`. None of the 145
       labeled boxes was a block diagram or PCB; 8 images with unlabeled candidates (e.g. a
       chorus block diagram in `val/`) are queued for review.
+- [x] **Subcircuit classes extended (2026-09-24):** 4 functional blocks plus 9 building blocks
+      (`current_mirror`, `voltage_divider`, `differential_pair`, `emitter_follower`,
+      `comparator`, `rectifier`, `inverting_amp`, `non_inverting_amp`, `linear_regulator`),
+      nested boxes allowed. Crawler hints for Commons *Voltage dividers* and *Comparators*.
 - [ ] **Retrain with 3 page classes** once the review queue (42 new pages + 8 re-reviews) is
       labeled. The current weights know only `schematic`.
-- [ ] **Resolution experiment:** `run2_imgsz1280` (same data as `run2`, 1280 px instead of 640)
-      to see whether small schematics are found more reliably.
+- [x] **Resolution experiment (2026-09-24):** `run2_imgsz1280` (same data as `run2`) found the
+      small schematics 640 px misses, but also ~30 false positives on 6 datasheet pages (tables,
+      text columns, margins): val mAP50 0.580 vs 0.686. With 47 training images it doesn't learn
+      enough negatives at 1280. Stay at 640; repeat (also 960) once the dataset has more pages,
+      especially pages without figures.
 - [ ] More service-manual sources: hobby sites (Lojinx, synfo.nl, servicemanual.altervista,
       SynthXL, Vintage Synth Parts), one at a time after checking each site's terms, then add
       the host to `reviewed_hosts`. elektronik-kompendium.de stays blocked unless the operator
