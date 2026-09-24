@@ -30,7 +30,7 @@ def to_symbol_groups(result: dict, gold: dict | None = None) -> dict:
 
     With a gold file, verdicts from earlier reviews are pre-filled (`review`), and
     entries that exist only in the gold file (added by hand) are appended as gold#n,
-    so the export (review_import.py) round-trips them."""
+    so the export (review_import.py) round-trips them, flagged `added` (missed by the analysis)."""
     parts = {ref: {"kind": c["type"], "value": c["value"]} for ref, c in result["components"].items()}
     confirmed = {key(e) for e in gold["subcircuits"]} if is_confirmed(gold) else set()
     rejected = {key(e) for e in gold.get("rejected", [])} if gold else set()
@@ -51,8 +51,10 @@ def to_symbol_groups(result: dict, gold: dict | None = None) -> dict:
     match_keys = {key(s) for s in result["subcircuits"]}
     extra = [e for e in (gold or {}).get("subcircuits", []) if key(e) not in match_keys]
     for i, entry in enumerate(extra, start=1):
+        # added: a subcircuit the analysis missed (KiCanvas counts it as a miss, not a hit)
         group = {"id": f"gold#{i}", "label": f"gold#{i} {entry['type']}", "kind": entry["type"],
-                 "refs": list(entry["components"]), "description": ["added by hand in the gold file"]}
+                 "refs": list(entry["components"]), "added": True,
+                 "description": ["added by hand in the gold file"]}
         if confirmed:
             group["review"] = "correct"
         groups.append(group)

@@ -42,6 +42,7 @@ def test_gold_prefills_matches_and_appends_hand_added_entries():
     assert "review" not in data["groups"][1]
     assert data["groups"][3]["label"] == "gold#2 inverting_amp"
     assert data["groups"][3]["refs"] == ["U1.A", "R3"] and data["groups"][3]["review"] == "correct"
+    assert data["groups"][3]["added"] is True and "added" not in data["groups"][0]
     assert "R1" in data["parts"]  # classification still comes from the analysis
 
 
