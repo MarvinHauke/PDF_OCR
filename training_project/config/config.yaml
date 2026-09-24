@@ -8,7 +8,7 @@ model:
 
 # Training parameters
 training:
-  run_name: "run6" # inference weights: runs/run6 (3 page classes, 141 train pages), see experiments.md
+  run_name: "run7" # inference weights: runs/run7 (3 page classes, 204 train pages), see experiments.md
   image_size: 640
   batch_size: -1 # Auto-adjust for MPS (recommended for Apple Silicon)
   epochs: 100

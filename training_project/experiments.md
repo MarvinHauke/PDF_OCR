@@ -121,6 +121,25 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
 - Reading: more (and more varied) data is the biggest lever so far. Part of the gap is that
   `run5` had never seen a service manual. Inference switched to `run6`.
 
+### 2026-09-24 · Import round 3 (service manuals) and `run7`
+- 10 more archive.org manuals, 8 pages each → 80 pages; `run6` pre-labeled, 5 auto-accepted,
+  74 reviewed: 28 with figures (33 schematic, 12 block_diagram, 10 pcb boxes), 46 without.
+- Data: **204 train / 50 val** (83 / 29 figure-free). Boxes train: schematic 210, block_diagram 22,
+  pcb 47; val: schematic 18, block_diagram 5, pcb 10.
+- `run7`: same settings as `run6`, early-stopped at 179, best epoch 129. Long plateau (ep 60–100
+  around 0.6) before improving again.
+- Both on the new val set (50 images, 33 boxes):
+
+  | | all mAP50 | all mAP50-95 | schematic mAP50 | block_diagram | pcb mAP50 / R | P |
+  |---|---|---|---|---|---|---|
+  | `run6` | 0.699 | 0.549 | **0.885** | 0.401 | 0.812 / **0.61** | 0.74 |
+  | `run7` | **0.813** | **0.580** | 0.806 | **0.810** | 0.823 / 0.42 | **0.90** |
+
+- Reading: mixed. Block diagrams gain a lot (9 new examples), precision rises; schematic and pcb
+  recall drop. With 33 val boxes (18 schematic) one figure moves a class by ~5 points, so part of
+  this is noise; val needs to grow further before small differences mean anything.
+- Decision (user): inference switched to `run7` (better overall and on block diagrams, most data).
+
 ## Backlog (ideas, not tried yet)
 
 Page model, one change per run (`run5` learning rate done, see above):
