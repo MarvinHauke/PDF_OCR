@@ -6,7 +6,7 @@
 # The document root must be the repo root, because task URLs are
 # /data/local-files/?d=<repo-relative path>. Label Studio additionally needs a
 # Local Files storage per project covering the images; setup_label_studio.py
-# creates it.
+# creates it. .envrc exports the same two variables, for starts without this script.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

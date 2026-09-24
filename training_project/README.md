@@ -360,8 +360,13 @@ Things that are easy to get wrong, and why the script handles them:
   `/data/local-files/?d=…` only if the project has a Local Files storage whose path contains
   the file; otherwise you get "There was an issue loading URL from $image value". The script
   adds one for `training_data/` without syncing it (syncing would create a task per file).
-- **The document root must be the repo root**, because task URLs are repo-relative.
-  `start_label_studio.sh` sets it.
+- **File serving must be on, and the document root must be the repo root** (task URLs are
+  repo-relative): `LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true` and
+  `LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=<repo>`. `start_label_studio.sh` sets both; put them in
+  `.envrc` as well, so a plain `uvx label-studio start` from the repo works too. Without them
+  every image fails with the same "There was an issue loading URL" message (a 403 behind it).
+- **The script checks it:** at the end it fetches one task image like the labeling page does
+  and stops with the cause (403: serving off, restart Label Studio; 404: root/storage wrong).
 - **Label names must match `data.yaml`.** The XML configs do.
 
 The ML backend (`labelstudio/ml_backend.py`) implements Label Studio's ML backend protocol

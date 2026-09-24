@@ -11,6 +11,8 @@ For each project (schematics = page dataset, subcircuits = crop dataset):
 - connect the ML backend (labelstudio/ml_backend.py) if it's running
 - import the dataset's review_queue/label_studio_tasks.json, skipping images
   that already have a task in the project
+- check that one task image actually loads (403 = Label Studio started without
+  LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED; same error message in the browser)
 
 Safe to run repeatedly. Needs Label Studio running (scripts/start_label_studio.sh)
 and a personal access token (Account & Settings -> Personal Access Token) in
@@ -167,15 +169,39 @@ def setup_project(ls: LabelStudio, key: str, backend_url: str):
 
     # 4. Tasks from the review queue
     tasks_path = config.TRAINING_DATA_PATH / "review_queue" / "label_studio_tasks.json"
+    existing = ls.task_images(project_id)
     if not tasks_path.exists():
         print(f"no review queue at {tasks_path}")
+    else:
+        queued = json.loads(tasks_path.read_text())
+        new_tasks = [t for t in queued if t["data"]["image"] not in existing]
+        if new_tasks:
+            ls.request("POST", f"/api/projects/{project_id}/import", json=new_tasks)
+            existing |= {t["data"]["image"] for t in new_tasks}
+        print(f"imported {len(new_tasks)} new task(s), {len(queued) - len(new_tasks)} already there")
+
+    # 5. Can the labeling page actually load the images?
+    if existing:
+        check_image_serving(ls, sorted(existing)[0])
+
+
+def check_image_serving(ls: LabelStudio, image_url: str):
+    """Fetch one task image the way the labeling page does. Label Studio reports every
+    failure there only as "There was an issue loading URL from $image value"."""
+    response = ls.session.get(f"{ls.url}{image_url}")
+    if response.ok:
+        print("task images load")
         return
-    queued = json.loads(tasks_path.read_text())
-    existing = ls.task_images(project_id)
-    new_tasks = [t for t in queued if t["data"]["image"] not in existing]
-    if new_tasks:
-        ls.request("POST", f"/api/projects/{project_id}/import", json=new_tasks)
-    print(f"imported {len(new_tasks)} new task(s), {len(queued) - len(new_tasks)} already there")
+    if response.status_code == 403:
+        hint = ("Label Studio runs without LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED. Restart it with\n"
+                "  training_project/scripts/start_label_studio.sh\n"
+                "or `uvx label-studio start` from a direnv shell in the repo (.envrc sets both variables).")
+    elif response.status_code == 404:
+        hint = ("The file isn't reachable: LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT must be the repo root,\n"
+                "and the Local Files storage must cover training_data/ (step 2), or the image was moved.")
+    else:
+        hint = response.text[:300]
+    sys.exit(f"task images do NOT load ({response.status_code} for {image_url}).\n{hint}")
 
 
 def _normalize_xml(xml: str) -> str:
