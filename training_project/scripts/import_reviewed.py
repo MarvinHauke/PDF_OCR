@@ -15,7 +15,15 @@ after adding classes) keep their place: only their label file is rewritten.
 
 Tasks without an annotation, or whose annotation was skipped/cancelled, stay
 in the review queue.
+
+After a real import, the imported tasks (and tasks whose images were imported
+earlier) are deleted from the Label Studio project: their images moved to
+train/ or val/, so they'd only show up there with a broken image link. Needs
+LABEL_STUDIO_API_KEY; without it, or with --keep-in-label-studio, nothing is
+deleted. The export file itself is the record of what was labeled.
 """
+
+import os
 
 import argparse
 import hashlib
@@ -83,6 +91,26 @@ def pick_split(filename: str, val_fraction: float) -> str:
     return "val" if bucket < val_fraction * 1000 else "train"
 
 
+def prune_label_studio(url: str, task_ids: list[int]):
+    """Delete imported tasks from Label Studio (their images now live in train/ or val/)."""
+    if not task_ids:
+        return
+    api_key = os.environ.get("LABEL_STUDIO_API_KEY")
+    if not api_key:
+        print(f"\nLABEL_STUDIO_API_KEY not set: {len(task_ids)} imported task(s) left in Label Studio")
+        return
+    import requests
+
+    from setup_label_studio import LabelStudio
+
+    try:
+        ls = LabelStudio(url, api_key)
+        deleted = sum(ls.session.delete(f"{ls.url}/api/tasks/{i}/").status_code == 204 for i in task_ids)
+        print(f"\nRemoved {deleted} of {len(task_ids)} imported task(s) from Label Studio")
+    except requests.RequestException as e:
+        print(f"\nLabel Studio not reachable ({e.__class__.__name__}): imported tasks left there")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Import a Label Studio JSON export into train/ and val/"
@@ -99,6 +127,9 @@ def main():
         help="Share of images that go to val/ (default: autolabel.val_fraction)",
     )
     parser.add_argument("--dry-run", action="store_true", help="Only print what would happen")
+    parser.add_argument("--keep-in-label-studio", action="store_true",
+                        help="Don't delete imported tasks from the Label Studio project")
+    parser.add_argument("--label-studio-url", default=os.environ.get("LABEL_STUDIO_URL", "http://localhost:8080"))
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
@@ -115,6 +146,7 @@ def main():
 
         # Convert everything first, so a bad label aborts before any file moves
         imports = []
+        task_ids = {}
         pending = 0
         for task in exported:
             annotation = latest_annotation(task)
@@ -124,11 +156,13 @@ def main():
             image_path = image_path_from_task(task, repo_root)
             lines = to_yolo_lines(annotation, class_ids)
             imports.append((task["data"]["image"], image_path, lines))
+            task_ids[task["data"]["image"]] = task.get("id")
     except (ValueError, KeyError) as e:
         print(f"Import aborted, nothing was moved: {e}")
         sys.exit(1)
 
     counts = {"train": 0, "val": 0, "relabeled": 0, "missing": 0}
+    stale_urls = set()
     existing_splits = {
         (config.TRAINING_DATA_PATH / s / "images").resolve(): s for s in ("train", "val")
     }
@@ -138,6 +172,7 @@ def main():
             # Already imported earlier, or moved by hand
             print(f"missing, skipped: {image_path.name}")
             counts["missing"] += 1
+            stale_urls.add(url)
             continue
 
         in_split = existing_splits.get(image_path.resolve().parent)
@@ -172,6 +207,10 @@ def main():
             t for t in json.loads(tasks_path.read_text()) if t["data"]["image"] not in imported_urls
         ]
         tasks_path.write_text(json.dumps(remaining, indent=2))
+
+    if not args.dry_run and not args.keep_in_label_studio:
+        prune_label_studio(args.label_studio_url, [task_ids[u] for u in imported_urls | stale_urls
+                                                   if task_ids.get(u) is not None])
 
     prefix = "Would import" if args.dry_run else "Imported"
     print(

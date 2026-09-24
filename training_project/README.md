@@ -320,8 +320,10 @@ training_data/unlabeled/             rendered pages, not yet processed
    image as a background image.
 4. **Import.** Export the project as **JSON** (not YOLO) and run
    `import_reviewed.py <export.json> --dry-run`, then without `--dry-run`. Reviewed images
-   move to `train/` or `val/` with YOLO labels, and their tasks are removed from the queue.
-   Unreviewed tasks stay. An unknown label name aborts the import before anything moves.
+   move to `train/` or `val/` with YOLO labels, and their tasks are removed from the queue
+   and from the Label Studio project (their images moved, so they'd only show a broken image
+   there; needs `LABEL_STUDIO_API_KEY`, skip with `--keep-in-label-studio`). Unreviewed tasks
+   stay. An unknown label name aborts the import before anything moves.
 5. **Retrain** with `scripts/train.py`.
 
 ### Label Studio setup

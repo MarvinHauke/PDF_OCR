@@ -52,7 +52,8 @@ def main():
         help="Which training dataset's sources/ and unlabeled/ to use (default: pages)",
     )
     ingest.add_argument(
-        "--max-pages", type=int, default=30, help="Pages rendered per PDF (default: 30, 0 = all)"
+        "--max-pages", type=int, default=30,
+        help="Pages per PDF, spread evenly over the document (default: 30, 0 = all)"
     )
 
     crawl = commands.add_parser(

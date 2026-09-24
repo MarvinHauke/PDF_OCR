@@ -49,15 +49,23 @@ def page_filename(number: int) -> str:
 def prepare_document(source: Path, pages_dir: Path, dpi: int, max_pages: int = 0) -> Document:
     """Render a PDF's pages (or copy a single image) into pages_dir as page-NNN.png.
 
-    max_pages > 0 renders only the first max_pages pages."""
+    max_pages > 0 renders that many pages spread evenly over the document (first and
+    last included): service manuals keep their schematics at the end, so "the first
+    N pages" would mostly be text."""
     pages_dir.mkdir(parents=True, exist_ok=True)
 
     if source.suffix.lower() == PDF_SUFFIX:
         doc = Document(source=source, kind="pdf", dpi=dpi)
         pdf = pdfium.PdfDocument(str(source))
         try:
-            count = len(pdf) if max_pages <= 0 else min(len(pdf), max_pages)
-            for index in range(count):
+            total = len(pdf)
+            if max_pages <= 0 or max_pages >= total:
+                indices = range(total)
+            elif max_pages == 1:
+                indices = [0]
+            else:
+                indices = sorted({round(i * (total - 1) / (max_pages - 1)) for i in range(max_pages)})
+            for index in indices:
                 page = pdf[index]
                 width_pt, height_pt = page.get_size()
                 image = page.render(scale=dpi / 72).to_pil()
