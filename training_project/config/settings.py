@@ -288,10 +288,22 @@ class Config:
 
         return True
 
+    def get_last_checkpoint_path(self):
+        """last.pt of the run: the checkpoint a crashed run resumes from (whatever
+        use_best_weights says, which only picks the weights for inference)."""
+        return self.PROJECT_PATH / self.RUN_NAME / "weights" / "last.pt"
+
     def is_run_complete(self):
-        """Check if the training run appears to be complete"""
-        weights_path = self.get_weights_path()
-        return weights_path.exists()
+        """True once ultralytics finished the run: at the end of training it strips
+        the optimizer from last.pt and sets epoch to -1. A crashed or interrupted run
+        keeps both, so it can be resumed."""
+        last = self.get_last_checkpoint_path()
+        if not last.exists():
+            return False
+        import torch
+
+        checkpoint = torch.load(last, map_location="cpu", weights_only=False)
+        return checkpoint.get("optimizer") is None or checkpoint.get("epoch", -1) == -1
 
     def generate_run_name(self, prefix="run"):
         """Generate a new run name like run1, run2, ..."""

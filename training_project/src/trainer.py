@@ -51,7 +51,7 @@ class YOLOTrainer:
                 )
                 return None
 
-            weights_path = self.config.get_weights_path()
+            weights_path = self.config.get_last_checkpoint_path()
 
             if resume_if_possible and weights_path.exists():
                 self.logger.info(f"Found checkpoint at {weights_path}")
