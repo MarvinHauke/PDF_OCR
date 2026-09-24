@@ -103,9 +103,56 @@ Training runs, metrics and experiment ideas are tracked in
       via `uvx label-studio start` (isolated; installing it as a project dependency conflicts
       with the opencv version already required by easyocr/ultralytics, confirmed by testing).
 
+## Circuit analysis (graph-based, decided 2026-09-24)
+
+Subcircuits are **graph patterns, not shapes**: a voltage divider or current mirror is defined
+by how parts are connected, and the same topology is drawn in many ways. So subcircuits are
+found by pattern matching on a circuit graph, not by a YOLO subcircuit detector.
+
+```
+page (PDF/image)
+ └─ stage 1: page model (YOLO)          schematic / block_diagram / pcb
+     └─ schematic crop
+         ├─ stage 2a: symbol model (YOLO)   resistor, capacitor, bjt, mosfet, opamp, junction_dot, …
+         ├─ stage 2b: OCR                   refs + values (R3, 10k)
+         └─ stage 2c: connectivity          wires, junctions → nets
+             └─ circuit graph ─ pattern matcher ─ Jev arbitration ─ LLM explanation
+KiCad projects: the netlist is the true graph and the schematic gives exact symbol boxes
+```
+
+- [x] **M1 – pattern library on KiCad netlists** (`src/pdf_ocr/circuit/`, `pdf-ocr circuit`):
+      netlist → graph → patterns (voltage divider, RC filters, decoupling, current mirror,
+      differential pair, emitter follower, push-pull, op-amp stages, comparator, rectifier
+      bridge, linear regulator, 555 astable/monostable), `part_of` for patterns inside
+      stronger ones, `ambiguous` flags. Gold set + `--evaluate` for precision/recall.
+- [~] **M2 – symbol detection:** training data generated from KiCad renders
+      (`scripts/kicad_symbol_labels.py`), first model trained. Next: measure on real crops
+      (scans, book photos), close the domain gap, more classes (jfet, transformer, crystal,
+      switch, relay, connector), OCR for refs/values.
+- [ ] **M3 – connectivity extraction** from images: clean KiCad renders first, measured against
+      the true netlist; scans and photos afterwards.
+- [ ] **M4 – Jev + LLM:** Jev arbitrates `ambiguous` matches with context (e.g. a
+      differential pair with one grounded base in a VCF is an exponential converter), the LLM
+      explains the structured result.
+- [ ] **KiCanvas: review subcircuits in the browser** (MIT, local clone in
+      `~/Development/javascript_typescript/kicanvas`, baseline builds and passes its 95 tests).
+      Goal: replace the PNG `pdf-ocr circuit --review` with an interactive schematic.
+      - Implement the documented but unused `zoom="<refs>"` embed attribute
+        (`src/kicanvas/elements/kicanvas-embed.ts` declares it, nothing reads it): resolve refs
+        with `schematic.find_symbol()`, union their `layers.query_item_bboxes()`, set
+        `viewport.camera.bbox` like `zoom_to_selection()` does.
+      - Multi-group highlight: today `paint_selected()` (`src/viewers/base/viewer.ts`) draws one
+        box into the overlay layer; extend it to several labeled, colored groups, passed as
+        child elements (`<kicanvas-highlight refs="R1 R2 U2.A" label="#1 voltage_divider">`, in
+        the style of `<kicanvas-source>`). Multi-unit parts need ref + unit (`U2.A`).
+      - Upstream: open an issue first (the project asks for coordination), then fork and PR,
+        each step only after approval.
+- Paused: YOLO subcircuit labeling (Label Studio project #5). A YOLO subcircuit model may come
+  back later, trained on graph-derived boxes instead of manual labels.
+
 ## Long-term (schematic analysis + LLM hand-off)
 
-- [ ] Analyse schematics for subcircuits with YOLO and other tools (root README step 4).
+- [ ] Analyse schematics for subcircuits (root README step 4): see "Circuit analysis" above.
 - [ ] Feed an LLM with the generated context via MCP (root README step 5) — see
       [`typesafe-integration.md`](./typesafe-integration.md) for using cheap Jev judgments
       as a routing/gating layer in front of this step to cut down on LLM calls.

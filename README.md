@@ -58,6 +58,23 @@ uv run pdf-ocr analyse
 uv run pdf-ocr analyse input/CEM33403345-VCO.pdf --dpi 200 --conf 0.25
 ```
 
+Try the current model live with your webcam (hold a datasheet or book page in front of it):
+
+```Bash
+# Page model (schematic / block_diagram / pcb), weights from training_project/config/config.yaml
+uv run python training_project/scripts/predict.py 0 --show
+
+# Stricter or looser: set the confidence threshold
+uv run python training_project/scripts/predict.py 0 --show --conf 0.5
+
+# Symbol model (resistor, capacitor, op-amp, ...), once a symbols run exists
+uv run python training_project/scripts/predict.py 0 --show --config config/symbols.yaml
+```
+
+`0` is the first camera; use `1` for a second one. Stop with `Ctrl+C` in the terminal. On
+macOS, the terminal app needs camera permission (System Settings → Privacy & Security →
+Camera). Live mode doesn't save frames.
+
 Each input gets its own folder, which is overwritten on rerun:
 `output/<name>/pages/` (rendered pages), `output/<name>/annotated/` (boxes drawn), and
 `output/<name>/detections.json`. The JSON gives boxes in pixels and, for PDFs, in PDF points

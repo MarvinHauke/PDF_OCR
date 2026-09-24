@@ -21,6 +21,10 @@ Status: **early**. An installable package with two commands:
   `training_data/sources/` (recursively) into `training_data/unlabeled/`, skipping files
   already listed by hash in `training_data/ingest_manifest.jsonl`. No detection happens here.
   `--dataset subcircuits` targets the crop dataset, `--max-pages` caps pages per PDF.
+- `pdf-ocr circuit <path>` (`circuit/`): graph-based subcircuit detection on KiCad netlists
+  (netlist parser, component classification, circuit graph, pattern library, gold-set
+  evaluation). `circuit/kicad_sch.py` computes symbol boxes from `.kicad_sch` files for the
+  symbol dataset.
 - `pdf-ocr crawl <source>` (`crawl/`): downloads training material (Wikimedia Commons, KiCad
   projects on GitHub, archive.org service manuals, a curated URL list) with license tiers,
   host allow/block lists and a 1 GB cap; settings in `training_project/config/crawl.yaml`.
@@ -50,6 +54,8 @@ optimized for Apple Silicon (MPS):
 - `scripts/make_crops.py` + `config/subcircuits.yaml` — second dataset: functional subcircuit
   blocks inside schematic crops. The page dataset has three classes: `schematic`,
   `block_diagram`, `pcb`.
+- `scripts/kicad_symbol_labels.py` + `config/symbols.yaml` — symbol detection dataset generated
+  from KiCad renders (17 classes, 640 px tiles).
 - `scripts/review_existing.py` — re-review images already in `train/`/`val/` (e.g. after
   adding classes); `import_reviewed.py` rewrites their labels in place.
 - `scripts/start_label_studio.sh`, `scripts/setup_label_studio.py`, `labelstudio/` — Label

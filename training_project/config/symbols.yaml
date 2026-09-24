@@ -1,5 +1,8 @@
-# config/config.yaml
-# YOLO Training Configuration with MPS Optimizations for MacBook
+# config/symbols.yaml
+# Symbol detection (stage 2a): resistors, capacitors, transistors, ... inside schematics.
+# Dataset generated from KiCad projects by scripts/kicad_symbol_labels.py (640 px tiles).
+# Differences to config.yaml: paths, lr0 (AdamW-appropriate, see experiments.md backlog),
+# flips/rotation (symbols appear mirrored and slightly skewed in scans).
 
 # Model configuration
 model:
@@ -8,7 +11,7 @@ model:
 
 # Training parameters
 training:
-  run_name: "run5" # inference weights: runs/run5 (3 page classes, lr0 0.0014), see experiments.md
+  run_name: "symbols_run1" # inference weights for the symbol model
   image_size: 640
   batch_size: -1 # Auto-adjust for MPS (recommended for Apple Silicon)
   epochs: 100
@@ -26,7 +29,7 @@ training:
 
   # Optimizer settings (optimized for MPS)
   optimizer: "AdamW" # AdamW generally works better with MPS than SGD
-  lr0: 0.0014 # AdamW-appropriate (0.01 is the SGD value), see experiments.md run5
+  lr0: 0.0014 # Initial learning rate
   lrf: 0.01 # Final learning rate (lr0 * lrf)
   momentum: 0.937 # SGD momentum/Adam beta1
   weight_decay: 0.0005 # Optimizer weight decay
@@ -38,12 +41,12 @@ training:
   hsv_h: 0.015 # Image HSV-Hue augmentation (fraction)
   hsv_s: 0.7 # Image HSV-Saturation augmentation (fraction)
   hsv_v: 0.4 # Image HSV-Value augmentation (fraction)
-  degrees: 0.0 # Image rotation (+/- deg)
+  degrees: 3.0 # Image rotation (+/- deg)
   translate: 0.1 # Image translation (+/- fraction)
   scale: 0.5 # Image scale (+/- gain)
   shear: 0.0 # Image shear (+/- deg)
   perspective: 0.0 # Image perspective (+/- fraction), range 0-0.001
-  flipud: 0.0 # Image flip up-down (probability)
+  flipud: 0.5 # Image flip up-down (probability)
   fliplr: 0.5 # Image flip left-right (probability)
   mosaic: 1.0 # Image mosaic (probability)
   mixup: 0.0 # Image mixup (probability)
@@ -94,12 +97,12 @@ logging:
 
 # Paths (relative to project root)
 paths:
-  training_data: "training_data"
-  dataset_yaml: "training_data/data.yaml"
-  project: "training_data/runs"
+  training_data: "training_data/symbols"
+  dataset_yaml: "training_data/symbols/data.yaml"
+  project: "training_data/symbols/runs"
   output: "../output"
-  sources: "training_data/sources" # raw training material (PDFs/images), read by `pdf-ocr ingest`
-  unlabeled: "training_data/unlabeled" # rendered pages waiting for autolabel.py
+  sources: "training_data/symbols/sources" # unused: tiles come from kicad_symbol_labels.py
+  unlabeled: "training_data/symbols/unlabeled"
 
 # Environment-specific configs
 environment:

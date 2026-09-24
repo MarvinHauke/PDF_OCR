@@ -52,16 +52,61 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
 - Training curve (mAP50, all classes): ep50 0.08 → ep60 0.37 → ep88 0.44 → ep100 0.44, still
   rising → undertrained. The block_diagram/pcb values rest on 1–2 val boxes each.
 
-### 2026-09-24 · `run4`: 200 epochs (running)
-- Same data and settings as `run3`, only `--epochs 200` (patience 50).
+### 2026-09-24 · `run4`: 200 epochs
+- Same data and settings as `run3`, only `--epochs 200` (patience 50); early-stopped at
+  epoch 135, best epoch 85.
+- best.pt per class mAP50: **schematic 0.745** (P 0.89, R 0.62), block_diagram 0.513,
+  pcb 0.995 (1 val box). All classes: mAP50 0.751, mAP50-95 0.369.
+- Curve (mAP50): ep40 0.05 → ep60 0.13 → ep80 0.31 → ep120 0.45; still a very slow start.
+- Beats `run2` on schematic (0.557 on the same val set) → inference switched to `run4`
+  (`run_name: "run4"`).
+
+### 2026-09-24 · Decision: subcircuits become graph-based
+- Building blocks (current mirror, voltage divider, …) are topologies, not shapes; YOLO
+  learns appearance. New direction: symbol detection (YOLO) + connectivity graph + graph
+  pattern matching, with Jev arbitrating ambiguous matches. YOLO subcircuit labeling
+  (project #5) paused before any labels were made. Details: `docs/roadmap.md` → Circuit analysis.
+
+### 2026-09-24 · `run5`: learning rate 0.0014
+- Same data and settings as `run4` (200 epochs), only `lr0: 0.0014` instead of 0.01 (AdamW with
+  the SGD default was the suspect for the slow start). Early-stopped at 137, best epoch 87.
+- Learns from the start: mAP50 0.24 at epoch 20 (`run4`: 0.00).
+- best.pt per class: schematic mAP50 0.724 / **mAP50-95 0.554** (`run4`: 0.745 / 0.408),
+  block_diagram 0.551 / 0.380, pcb 0.995 / 0.796 (1 val box). All: mAP50 0.756, **mAP50-95 0.577**
+  (`run4`: 0.751 / 0.369) → same hit rate, much tighter boxes.
+- Adopted: `lr0: 0.0014` in `config.yaml`, inference switched to `run5`.
+
+### 2026-09-24 · Symbol dataset from KiCad projects (`symbols_run1` running)
+- 24 crawled KiCad projects → `scripts/kicad_symbol_labels.py`: sheets rendered black-and-white
+  at 200 DPI, symbol boxes computed from the `.kicad_sch` (overlay checked on 3 sheets: boxes sit
+  on rotated/mirrored symbols and junction dots), cut into 640 px tiles (stride 512).
+- 775 tiles, 17 classes; train 708 / val 67 tiles, split per project so that every class is in
+  both (a plain random project split left val without op-amps; a class occurring in only val
+  projects left training without zeners and P-MOSFETs).
+- Boxes train/val: resistor 1019/84, capacitor 676/103, junction_dot 2794/409, ground 1195/127,
+  opamp 53/3, bjt_npn 12/1, bjt_pnp 9/3, mosfet_p 5/2, zener 4/2 → transistor and zener classes
+  are too thin to learn yet.
+- `symbols_run1`: yolo11n, 640 px tiles, 200 epochs, lr0 0.0014, degrees 3, flipud 0.5.
+  (First attempt crashed on MPS in the first batch with "size of tensor a must match the size of
+  tensor b"; not reproducible, the restart ran through. Newer ultralytics has MPS fixes in the
+  assigner, PR #24222.)
+
+### 2026-09-24 · `symbols_run1` results
+- 200 epochs (5.8 h, no early stop, still improving slowly). Val (67 render tiles, 871 boxes):
+  **mAP50 0.852, mAP50-95 0.801**, P 0.76, R 0.92.
+- Per class mAP50: resistor 0.981, capacitor 0.995, junction_dot 0.994, ground 0.939, supply
+  0.963, ic 0.836, diode 0.823, led/zener/opamp/mosfet 0.995 (1–13 boxes each), bjt_pnp 0.746,
+  **bjt_npn 0.249** (1 box), **inductor 0.000** (5 boxes, none found).
+- Real crops (conf 0.3): clean digital schematics (EAGLE screenshot, electricdruid datasheet)
+  are good for resistors, capacitors, op-amps, junction dots, supply; misses EAGLE-style ground
+  symbols and some ICs, calls a P-MOSFET `ic`. Book photos (DIN symbols) are weak: some DIN
+  resistors and junction dots found, the DIN op-amp triangle (∞) not, one false `led`.
+- Reading: renders are learned well; the gap is symbol *style* (DIN, EAGLE ground) and photo
+  quality. Next: pre-label the 145 real crops and correct them (B3), more symbol styles.
 
 ## Backlog (ideas, not tried yet)
 
-Planned after `run4`, one change per run:
-- **`run5`: learning rate.** Config forces AdamW with `lr0: 0.01`, which is the SGD value
-  (ultralytics default.yaml: "SGD=1E-2, Adam=1E-3"). Ultralytics' own `optimizer: auto`
-  would pick AdamW with lr0 = 0.002·5/(4+nc) ≈ 0.0014 for 3 classes. Likely cause of the slow
-  start in every run so far.
+Page model, one change per run (`run5` learning rate done, see above):
 - **`run6`: augmentations for phone photos of books.** `degrees: 3–5`, `perspective: 0.0005`
   (both 0 now); question `fliplr: 0.5` (mirrors text) and `mosaic` for documents.
 - **`run7`: model size** `yolo11s` (~9 M params) instead of `yolo11n` (2.6 M).
@@ -72,4 +117,6 @@ Later:
 - More `pcb` examples: export PCB layouts from the crawled KiCad projects (`kicad-cli pcb
   export`), and PCB assembly drawings from service manuals.
 - Grow `val/` with human-reviewed pages; per-class numbers for rare classes are noise today.
-- Subcircuits: first manual labeling round (13 classes), then a first model.
+- Symbols: evaluate on real schematic crops (scans, book photos), not only on KiCad renders;
+  pre-label the 145 crops with the symbol model and correct them (domain gap).
+- Symbols: more transistor/zener examples (crawl more analog projects: eurorack, synth, audio).

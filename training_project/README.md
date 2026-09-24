@@ -13,7 +13,9 @@ A comprehensive YOLO training framework optimized for Apple Silicon (MPS) with Y
 - [Labeling Workflow](#labeling-workflow)
   - [Label Studio setup](#label-studio-setup)
   - [Page classes](#page-classes)
-  - [Subcircuits (stage 2)](#subcircuits-stage-2)
+  - [Subcircuits (stage 2) — paused](#subcircuits-stage-2--paused)
+  - [Circuit analysis (graph-based)](#circuit-analysis-graph-based)
+  - [Symbol detection (stage 2a)](#symbol-detection-stage-2a)
   - [Crawling training material](#crawling-training-material)
   - [Experiment log](#experiment-log)
 - [Autocompletion Setup](#autocompletion-setup)
@@ -387,7 +389,11 @@ uv run python training_project/scripts/review_existing.py train/images/x.png val
 uv run python training_project/scripts/setup_label_studio.py
 ```
 
-### Subcircuits (stage 2)
+### Subcircuits (stage 2) — paused
+
+> **Paused (2026-09-24):** subcircuits are now found by graph pattern matching (see
+> "Circuit analysis" below and `docs/roadmap.md`). The YOLO subcircuit dataset, its Label
+> Studio project and `make_crops.py` are kept; the crops are test material for the symbol model.
 
 Subcircuits are labeled on schematic crops, not full pages, so small details stay readable.
 There are two kinds of classes, and boxes may nest (e.g. an `amplifier` box around a stage and a
@@ -415,6 +421,47 @@ uv run python training_project/scripts/train.py --config config/subcircuits.yaml
 Until the first subcircuit model is trained, `autolabel.py` sends every crop to review
 without boxes and the ML backend returns no pre-labels: the first round is manual.
 `crops_manifest.jsonl` records the parent image and box of each crop.
+
+### Circuit analysis (graph-based)
+
+`pdf-ocr circuit` finds subcircuits in KiCad netlists by pattern matching on the circuit graph
+(`src/pdf_ocr/circuit/`): components are classified from their symbol library and part name,
+multi-unit op-amps are split into units, and each pattern is an explicit rule (e.g. a current
+mirror = two same-type transistors with shared bases and emitters, one diode-connected).
+
+```bash
+# All crawled netlists → output/circuits/<project>.circuit.json
+uv run pdf-ocr circuit training_project/training_data/subcircuits/sources/crawled/kicad_github
+# Gold set: write drafts, review them, then evaluate
+uv run pdf-ocr circuit <netlist.xml> --init-gold
+uv run pdf-ocr circuit <folder> --review      # PNGs in output/circuits/review/
+uv run pdf-ocr circuit <folder> --evaluate
+uv run pytest tests/          # pattern tests (positive and false-positive cases)
+```
+
+Reviewing a gold draft: `--review` draws every entry of `training_data/circuits/gold/<circuit>.json`
+into the rendered schematic as a numbered, colored box, with a legend numbered like the file.
+Delete wrong entries, add missing ones (`{"type": ..., "components": ["R8", "C3"]}`; op-amp
+units as `U2.A`), set `"reviewed": true`, and run `--review` again to check your edits.
+
+Matches inside a stronger match are marked `part_of` (a 555's timing resistors aren't a
+separate voltage divider); matches that depend on context are `ambiguous`. The crawler
+(`kicad_github`) keeps each project's `netlist.xml` and `.kicad_sch` files for this.
+
+### Symbol detection (stage 2a)
+
+The symbol dataset is generated from the crawled KiCad projects: every sheet is rendered, the
+symbol boxes come straight from the schematic, and the sheet is cut into 640 px tiles. No
+manual labeling. The train/val split is per project and makes sure every class is in both.
+
+```bash
+uv run python training_project/scripts/kicad_symbol_labels.py        # new projects only
+uv run python training_project/scripts/train.py --config config/symbols.yaml --run-name symbols_runN
+```
+
+17 classes: resistor, capacitor, capacitor_polarized, inductor, potentiometer, diode, zener,
+led, bjt_npn, bjt_pnp, mosfet_n, mosfet_p, opamp, ic, ground, supply, junction_dot. KiCad renders
+are cleaner than scans and book photos; results on real crops are the measure that counts.
 
 ### Crawling training material
 
