@@ -90,7 +90,14 @@ def main():
     circuit.add_argument("--init-gold", action="store_true", help="Write current matches as gold drafts to review")
     circuit.add_argument("--evaluate", action="store_true", help="Precision/recall against reviewed gold files")
     circuit.add_argument("--review", action="store_true",
-                         help="Draw gold entries (or matches) into the schematic: output/circuits/review/")
+                         help="Show gold entries (or matches) on the schematic: output/circuits/review/")
+    circuit.add_argument("--review-format", choices=["html", "png"],
+                         help="html = KiCanvas page (needs --kicanvas-js/KICANVAS_JS), png = images; "
+                              "default: html if a bundle is configured")
+    circuit.add_argument("--kicanvas-js", help="Path to the built kicanvas.js (default: $KICANVAS_JS)")
+    circuit.add_argument("--import-review", type=Path, metavar="FILE_OR_DIR",
+                         help="KiCanvas review export(s) (<circuit>.groups.json, or a folder of them): "
+                              "verdicts -> gold files + training_data/circuits/graphs/")
 
     args = parser.parse_args()
 
@@ -124,7 +131,8 @@ def main():
         from pdf_ocr.circuit import cli as circuit_cli
 
         circuit_cli.run(args.path, args.output, args.gold, evaluate=args.evaluate, init_gold=args.init_gold,
-                        review=args.review)
+                        review=args.review, review_format=args.review_format, kicanvas_js=args.kicanvas_js,
+                        import_review=args.import_review)
 
     elif args.command == "crawl":
         from pdf_ocr import crawl as crawler

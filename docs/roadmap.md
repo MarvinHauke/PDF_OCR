@@ -8,6 +8,7 @@ surface to revisit and reprioritize.
 
 Grow and clean the training data, then tune training. The pipeline (`pdf-ocr analyse`,
 crawler, Label Studio loop) is in place; model quality is limited by the small dataset.
+Next steps are listed at the top of the backlog in `experiments.md`.
 Training runs, metrics and experiment ideas are tracked in
 [`training_project/experiments.md`](../training_project/experiments.md), not here.
 
@@ -147,6 +148,12 @@ KiCad projects: the netlist is the true graph and the schematic gives exact symb
         the style of `<kicanvas-source>`). Multi-unit parts need ref + unit (`U2.A`).
       - Upstream: open an issue first (the project asks for coordination), then fork and PR,
         each step only after approval.
+      - PDF_OCR side done: `pdf-ocr circuit --review` writes self-contained KiCanvas pages in the
+        agreed "symbol groups" format (`src/pdf_ocr/circuit/review_html.py`); the KiCanvas side
+        (panel, display) is developed in its own repo.
+      - Review loop closed (2026-09-25): Correct/Wrong and new groups in KiCanvas, exported and
+        imported with `--import-review` into gold files and a graph dataset
+        (`training_data/circuits/graphs/`, `src/pdf_ocr/circuit/review_import.py`).
 - Paused: YOLO subcircuit labeling (Label Studio project #5). A YOLO subcircuit model may come
   back later, trained on graph-derived boxes instead of manual labels.
 

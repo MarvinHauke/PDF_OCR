@@ -443,15 +443,26 @@ mirror = two same-type transistors with shared bases and emitters, one diode-con
 uv run pdf-ocr circuit training_project/training_data/subcircuits/sources/crawled/kicad_github
 # Gold set: write drafts, review them, then evaluate
 uv run pdf-ocr circuit <netlist.xml> --init-gold
-uv run pdf-ocr circuit <folder> --review      # PNGs in output/circuits/review/
-uv run pdf-ocr circuit <folder> --evaluate
+uv run pdf-ocr circuit <folder> --review      # KiCanvas HTML (or PNGs) in output/circuits/review/
+uv run pdf-ocr circuit <folder> --import-review ~/Downloads --evaluate   # KiCanvas exports -> gold
 uv run pytest tests/          # pattern tests (positive and false-positive cases)
 ```
 
-Reviewing a gold draft: `--review` draws every entry of `training_data/circuits/gold/<circuit>.json`
-into the rendered schematic as a numbered, colored box, with a legend numbered like the file.
-Delete wrong entries, add missing ones (`{"type": ..., "components": ["R8", "C3"]}`; op-amp
-units as `U2.A`), set `"reviewed": true`, and run `--review` again to check your edits.
+Reviewing: `--review` shows the subcircuits on the schematic.
+- **KiCanvas HTML** (preferred): set `KICANVAS_JS` (e.g. in `.envrc`) or pass `--kicanvas-js` to a
+  locally built [KiCanvas](https://github.com/theacodes/kicanvas) bundle with the symbol-groups
+  feature. One self-contained page per project opens from `file://` (all sheets inlined). It shows
+  the current matches (ambiguity, nesting, notes), with verdicts from earlier reviews pre-filled
+  and entries added by hand as `gold#n`. In KiCanvas: `y` correct, `x` wrong, `n` next open group,
+  `o` / Shift-click / `c` to create groups the rules missed; then Export saves
+  `<circuit>.groups.json`. `--import-review <file or folder>` merges the verdicts into
+  `training_data/circuits/gold/<circuit>.json` (`subcircuits` = correct + added, `rejected` = wrong,
+  `reviewed` once every top-level match has a verdict) and writes the graph dataset entry
+  `training_data/circuits/graphs/<circuit>.json` (units, nets, pin edges, positive/negative
+  subcircuits). KiCanvas lives in its own repo; PDF_OCR only references the bundle.
+- **PNG** (fallback without a bundle, or `--review-format png`): the gold file's entries (or the
+  matches) as numbered, colored boxes with a legend; edit the gold JSON by hand (op-amp units as
+  `U2.A`) and set `"reviewed": true`.
 
 Matches inside a stronger match are marked `part_of` (a 555's timing resistors aren't a
 separate voltage divider); matches that depend on context are `ambiguous`. The crawler

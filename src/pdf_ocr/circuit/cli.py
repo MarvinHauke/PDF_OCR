@@ -5,11 +5,18 @@ subcircuits by component refs. `--init-gold` writes the current matches as a
 starting point; review them by hand (delete wrong entries, add missing ones),
 then `--evaluate` reports precision/recall per pattern type.
 
-`--review` draws the entries (gold file if present, else the current matches)
-into the rendered schematic sheets: one colored, numbered box per entry plus a
-legend, numbered like the gold file. Needs the project's .kicad_sch files next
-to the netlist (<name>.kicad/, kept by the crawler).
+`--review` shows the entries on the schematic. With a KiCanvas bundle
+(--kicanvas-js or KICANVAS_JS) it writes one self-contained HTML page per
+project (review_html.py) with the current matches, earlier verdicts pre-filled;
+mark them Correct/Wrong in KiCanvas, export, and `--import-review <file or
+folder>` turns the export into the gold file plus a graph dataset entry
+(review_import.py). Without a bundle it falls back to PNGs of the gold file (or
+the matches): rendered sheets with one colored, numbered box per entry plus a
+legend. Both need the project's .kicad_sch files next to the netlist
+(<name>.kicad/, kept by the crawler).
 """
+
+import os
 
 import json
 from collections import Counter
@@ -19,6 +26,8 @@ from pdf_ocr.circuit import netlist
 from pdf_ocr.circuit.graph import CircuitGraph
 from pdf_ocr.circuit.kicad_sch import KICAD_CLI, placed_symbols, render_sheet
 from pdf_ocr.circuit.patterns import analyze
+from pdf_ocr.circuit.review_html import write_review_page
+from pdf_ocr.circuit.review_import import import_review as import_review_file, load_exports
 
 REVIEW_DPI = 150
 LABEL_ALPHA = 90  # label background opacity (0-255): the circuit stays visible behind it
@@ -32,16 +41,37 @@ def collect(path: Path) -> list[Path]:
     return [path]
 
 
+def resolve_review_format(review_format: str | None, kicanvas_js: str | None) -> tuple[str, Path | None]:
+    """("html", bundle) if a KiCanvas bundle is configured, else ("png", None)."""
+    bundle = kicanvas_js or os.environ.get("KICANVAS_JS")
+    bundle = Path(bundle).expanduser() if bundle else None
+    if review_format == "png":
+        return "png", None
+    if bundle and bundle.is_file():
+        return "html", bundle
+    if review_format == "html":
+        raise SystemExit(f"KiCanvas bundle not found ({bundle or 'not set'}): pass --kicanvas-js or set "
+                         "KICANVAS_JS to the built kicanvas.js")
+    print("No KiCanvas bundle configured (KICANVAS_JS / --kicanvas-js): writing PNG review images")
+    return "png", None
+
+
 def run(path: Path, out_dir: Path, gold_dir: Path, evaluate: bool = False, init_gold: bool = False,
-        review: bool = False):
+        review: bool = False, review_format: str | None = None, kicanvas_js: str | None = None,
+        import_review: Path | None = None):
     out_dir.mkdir(parents=True, exist_ok=True)
+    fmt, bundle = resolve_review_format(review_format, kicanvas_js) if review else (None, None)
+    exports = load_exports(import_review) if import_review else {}
+    if import_review and not exports:
+        print(f"No KiCanvas review exports (groups JSON v1) found in {import_review}")
     results = {}
     for source in collect(path):
         circuit = netlist.load(source, kicad_cli=KICAD_CLI)
         if not circuit.components:
             print(f"{circuit.name}: empty netlist, skipped")
             continue
-        result = analyze(CircuitGraph(circuit))
+        graph = CircuitGraph(circuit)
+        result = analyze(graph)
         results[circuit.name] = result
         (out_dir / f"{circuit.name}.circuit.json").write_text(json.dumps(result, indent=2))
         top = Counter(s["type"] for s in result["subcircuits"] if not s["part_of"])
@@ -49,6 +79,13 @@ def run(path: Path, out_dir: Path, gold_dir: Path, evaluate: bool = False, init_
         print(f"{circuit.name}: {len(result['components'])} parts, "
               + ", ".join(f"{t} {n}" for t, n in top.most_common())
               + (f" ({ambiguous} ambiguous)" if ambiguous else ""))
+
+        if circuit.name in exports:
+            export_file, export = exports.pop(circuit.name)
+            try:
+                import_review_file(export_file, export, graph, result, source, gold_dir)
+            except ValueError as e:
+                print(f"  {export_file.name}: {e}")
 
         if init_gold:
             gold_file = gold_dir / f"{circuit.name}.json"
@@ -64,12 +101,20 @@ def run(path: Path, out_dir: Path, gold_dir: Path, evaluate: bool = False, init_
 
         if review:
             gold_file = gold_dir / f"{circuit.name}.json"
-            entries = (json.loads(gold_file.read_text())["subcircuits"] if gold_file.exists() else
+            gold = json.loads(gold_file.read_text()) if gold_file.exists() else None
+            if fmt == "html":
+                page = write_review_page(source, result, gold, bundle, out_dir / "review")
+                if page:
+                    print(f"  review: {page}")
+                continue
+            entries = (gold["subcircuits"] if gold else
                        [s for s in result["subcircuits"] if not s["part_of"]])
-            source_label = "gold file" if gold_file.exists() else "current matches"
+            source_label = "gold file" if gold else "current matches"
             for image in review_images(source, circuit.name, entries, source_label, out_dir / "review"):
                 print(f"  review: {image}")
 
+    for name, (export_file, _) in exports.items():
+        print(f"{export_file.name}: no netlist for circuit {name!r} under {path}, not imported")
     print(f"\nResults in {out_dir}")
     if evaluate:
         report(results, gold_dir)

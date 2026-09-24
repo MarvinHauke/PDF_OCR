@@ -20,11 +20,15 @@ Status: **early**. An installable package with two commands:
 - `pdf-ocr ingest [path]` (`ingest.py`): renders training material from
   `training_data/sources/` (recursively) into `training_data/unlabeled/`, skipping files
   already listed by hash in `training_data/ingest_manifest.jsonl`. No detection happens here.
-  `--dataset subcircuits` targets the crop dataset, `--max-pages` caps pages per PDF.
+  `--dataset subcircuits` targets the crop dataset, `--max-pages` caps pages per PDF,
+  `--refill` renders the pages still missing from already-ingested PDFs.
 - `pdf-ocr circuit <path>` (`circuit/`): graph-based subcircuit detection on KiCad netlists
   (netlist parser, component classification, circuit graph, pattern library, gold-set
   evaluation). `circuit/kicad_sch.py` computes symbol boxes from `.kicad_sch` files for the
-  symbol dataset.
+  symbol dataset. Review loop: `--review` writes KiCanvas pages of the matches
+  (`review_html.py`), Correct/Wrong is marked in KiCanvas and exported, `--import-review`
+  turns the export into the gold file and a graph dataset entry under
+  `training_data/circuits/graphs/` (`review_import.py`), then `--evaluate`.
 - `pdf-ocr crawl <source>` (`crawl/`): downloads training material (Wikimedia Commons, KiCad
   projects on GitHub, archive.org service manuals, a curated URL list) with license tiers,
   host allow/block lists and a 1 GB cap; settings in `training_project/config/crawl.yaml`.
