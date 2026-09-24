@@ -95,6 +95,10 @@ archive_org:
 kicad_github:
   dataset: subcircuits # full schematic sheets, many blocks per sheet
   kicad_cli: /Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli
+  # Each query is combined with every license below. topic:kicad alone returns mostly
+  # digital boards; the analog topics bring op-amp, transistor and filter circuits.
+  # Repos without a .kicad_sch are skipped anyway.
+  queries: ["topic:eurorack", "topic:synthesizer", "topic:audio-amplifier", "topic:kicad"]
   # GitHub license keys searched with `topic:kicad license:<key>`; all must be free above
   licenses: [cern-ohl-s-2.0, cern-ohl-w-2.0, cern-ohl-p-2.0, cc-by-sa-4.0, cc-by-4.0, cc0-1.0, mit, apache-2.0, gpl-3.0]
 

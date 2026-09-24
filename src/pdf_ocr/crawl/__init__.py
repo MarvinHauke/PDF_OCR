@@ -14,7 +14,9 @@ SOURCES = {
 }
 
 
-def run(source: str, limit: int | None = None, dry_run: bool = False) -> CrawlContext:
+def run(
+    source: str, limit: int | None = None, dry_run: bool = False, refresh_netlists: bool = False
+) -> CrawlContext:
     settings = load_settings()
     dataset = settings[source]["dataset"]
     out_dir = dataset_config(dataset).SOURCES_PATH / "crawled" / source
@@ -36,7 +38,11 @@ def run(source: str, limit: int | None = None, dry_run: bool = False) -> CrawlCo
         f"disk {budget.used / MB:.0f}/{budget.max_bytes / MB:.0f} MB){' [dry run]' if dry_run else ''}"
     )
     try:
-        import_module(SOURCES[source]).crawl(ctx)
+        module = import_module(SOURCES[source])
+        if refresh_netlists:
+            module.refresh_netlists(ctx)
+        else:
+            module.crawl(ctx)
     except CrawlStop as e:
         print(f"stopped: {e}")
         ctx.summary["stopped"] = 1
