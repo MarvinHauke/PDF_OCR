@@ -140,7 +140,47 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
   this is noise; val needs to grow further before small differences mean anything.
 - Decision (user): inference switched to `run7` (better overall and on block diagrams, most data).
 
+### 2026-09-24 · Import round 4 and `run8`
+- Round 4: 10 archive.org documents via a new broader query (7 turned out to be declassified CIA
+  reading-room files: some tube schematics, many forms/charts) plus 3 Roland manuals (user's own),
+  8 pages each; 17 pages were auto-accepted by `run7` (≥ 0.75) and at least 3 were wrong (a chart,
+  an archive form, a revision sheet) → all 17 re-reviewed. 95 tasks reviewed: 31 schematic,
+  34 block_diagram, 35 pcb boxes, 49 empty pages.
+- Data: **283 train / 70 val**. Boxes train: schematic 245, block_diagram 52, pcb 81; val: 19, 9, 12.
+- `run8`: same settings as `run7`; early-stopped at 115, best epoch 65 (by fitness = mostly
+  mAP50-95). mAP50 was still rising at the stop (ep 90: 0.52, ep 105: 0.54), train loss still falling.
+- Both on the new val set (70 images, 40 boxes):
+
+  | | all mAP50 | all mAP50-95 | schematic | block_diagram | pcb | P | R |
+  |---|---|---|---|---|---|---|---|
+  | `run7` | **0.645** | **0.469** | **0.729** | 0.477 | **0.728** | **0.86** | 0.54 |
+  | `run8` | 0.563 | 0.412 | 0.690 | 0.483 | 0.515 | 0.51 | 0.60 |
+
+- Reading: `run8` worse, likely stopped too early (run7 only broke out of its plateau after
+  epoch 120); label inconsistencies in the new material are the other suspect. Inference stays
+  on `run7`. Auto-accept at 0.75 is not safe on new document types.
+
+### 2026-09-25 · Import round 5 (`run9` still training)
+- Auto-accept off (`accept_threshold: 1.01`): all 88 new pages went to review (63 with boxes
+  from `run7`, 25 without detections). Sources: the missing 33 pages of the Roland RE-101/201 and
+  RE-301 manuals (`ingest --refill`) and 55 pages from 8 archive.org synth service manuals
+  (service-manual query only, no CIA hits). Plus 1 leftover round-4 task.
+- Data: **355 train / 87 val**. Boxes train: schematic 274, block_diagram 75, pcb 97 (146 empty
+  pages); val: 22, 18, 15 (51 empty). block_diagram in val doubled (9 → 18).
+- `run9` (run8 data, 300 epochs, patience 100) was started before the import. It crashed once
+  on MPS at epoch 38 (tensor shape mismatch in the loss, same family as the symbol-model crash)
+  and was resumed from `last.pt` via ultralytics directly: `train.py`'s auto-resume never
+  triggers, because `is_run_complete()` counts any existing weights file as finished
+  (fixed 2026-09-25: complete = last.pt stripped by ultralytics; resume always from last.pt).
+- Compare `run7`/`run8`/`run9` on the round-4 val set (list in
+  `backup_2026-09-24_before_import5/val_images_run9.txt`), then `run10` on the round-5 data.
+
 ## Backlog (ideas, not tried yet)
+
+Next up:
+- **Finish `run9`** and compare as above; then **`run10`** on 355/87.
+- **Label check of round 4:** run8's biggest errors on val, consistency of block_diagram vs
+  schematic on the new pages (CIA documents, Roland manuals).
 
 Page model, one change per run (`run5` learning rate done, see above):
 - **`run6`: augmentations for phone photos of books.** `degrees: 3–5`, `perspective: 0.0005`

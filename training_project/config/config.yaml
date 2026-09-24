@@ -110,7 +110,7 @@ environment:
 # Autolabeling pipeline settings (see src/autolabeler.py, src/decisions.py)
 autolabel:
   # Used by the threshold-stub decider when TYPESAFE_API_KEY isn't set
-  accept_threshold: 0.75 # yolo confidence >= this -> auto-accept into training set
+  accept_threshold: 1.01 #0.75 # yolo confidence >= this -> auto-accept into training set
   reject_threshold: 0.35 # yolo confidence <  this -> auto-reject (discarded)
   # Must match the rectangle-label control tag names in your Label Studio
   # project's labeling config (Settings -> Labeling Interface). Defaults

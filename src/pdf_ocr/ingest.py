@@ -22,16 +22,36 @@ from pdf_ocr.sources import collect_sources, prepare_document
 MANIFEST_NAME = "ingest_manifest.jsonl"
 
 
-def run(sources_dir: Path, unlabeled_dir: Path, dpi: int = 200, max_pages: int = 30) -> dict:
+def run(
+    sources_dir: Path, unlabeled_dir: Path, dpi: int = 200, max_pages: int = 30, refill: bool = False,
+    only: Path | None = None,
+) -> dict:
+    """refill: for already-ingested PDFs, render the pages the current max_pages selects
+    that the manifest doesn't list yet (e.g. after an earlier, smaller --max-pages).
+    Pages that were ingested and later deleted by hand stay deleted.
+    only: scan just this file/folder inside sources_dir; names stay relative to sources_dir."""
     sources_dir.mkdir(parents=True, exist_ok=True)
     unlabeled_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = unlabeled_dir.parent / MANIFEST_NAME
-    seen = _load_seen_hashes(manifest_path)
+    entries = _load_entries(manifest_path)
 
-    summary = {"ingested": 0, "already_ingested": 0, "pages": 0}
-    for source in collect_sources(sources_dir, recursive=True):
+    summary = {"ingested": 0, "already_ingested": 0, "refilled": 0, "pages": 0}
+    for source in collect_sources(only or sources_dir, recursive=True):
         digest = _sha256(source)
-        if digest in seen:
+        if digest in entries:
+            entry = entries[digest]
+            if refill and entry.get("dpi") == dpi:
+                known = {int(name.rsplit("-p", 1)[1].removesuffix(".png")) for name in entry["pages"]}
+                prefix = _prefix_for(source, sources_dir)
+                pages = _render_to_unlabeled(source, unlabeled_dir, prefix, dpi, max_pages, skip=known)
+                if pages:
+                    entry["pages"] = sorted(entry["pages"] + pages)
+                    entry["refilled_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    _rewrite_manifest(manifest_path, entries)
+                    summary["refilled"] += 1
+                    summary["pages"] += len(pages)
+                    print(f"{entry['source']}: +{len(pages)} page(s)")
+                    continue
             summary["already_ingested"] += 1
             continue
 
@@ -48,7 +68,7 @@ def run(sources_dir: Path, unlabeled_dir: Path, dpi: int = 200, max_pages: int =
         }
         with manifest_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
-        seen.add(digest)
+        entries[digest] = entry
 
         summary["ingested"] += 1
         summary["pages"] += len(pages)
@@ -76,10 +96,11 @@ def _crawl_tier(source: Path) -> str | None:
 
 
 def _render_to_unlabeled(
-    source: Path, unlabeled_dir: Path, prefix: str, dpi: int, max_pages: int
+    source: Path, unlabeled_dir: Path, prefix: str, dpi: int, max_pages: int,
+    skip: set[int] = frozenset(),
 ) -> list[str]:
     with tempfile.TemporaryDirectory() as tmp:
-        doc = prepare_document(source, Path(tmp), dpi, max_pages)
+        doc = prepare_document(source, Path(tmp), dpi, max_pages, skip=skip)
         names = []
         for page in doc.pages:
             name = f"{prefix}-p{page.number:03d}.png"
@@ -88,11 +109,19 @@ def _render_to_unlabeled(
     return names
 
 
-def _load_seen_hashes(manifest_path: Path) -> set[str]:
+def _load_entries(manifest_path: Path) -> dict[str, dict]:
+    """sha256 -> manifest entry, in file order."""
     if not manifest_path.exists():
-        return set()
+        return {}
     with manifest_path.open(encoding="utf-8") as f:
-        return {json.loads(line)["sha256"] for line in f if line.strip()}
+        entries = [json.loads(line) for line in f if line.strip()]
+    return {e["sha256"]: e for e in entries}
+
+
+def _rewrite_manifest(manifest_path: Path, entries: dict[str, dict]):
+    tmp = manifest_path.with_suffix(".jsonl.tmp")
+    tmp.write_text("".join(json.dumps(e) + "\n" for e in entries.values()), encoding="utf-8")
+    tmp.replace(manifest_path)
 
 
 def _sha256(path: Path) -> str:

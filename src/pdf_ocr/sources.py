@@ -46,12 +46,14 @@ def page_filename(number: int) -> str:
     return f"page-{number:03d}.png"
 
 
-def prepare_document(source: Path, pages_dir: Path, dpi: int, max_pages: int = 0) -> Document:
+def prepare_document(
+    source: Path, pages_dir: Path, dpi: int, max_pages: int = 0, skip: set[int] = frozenset()
+) -> Document:
     """Render a PDF's pages (or copy a single image) into pages_dir as page-NNN.png.
 
     max_pages > 0 renders that many pages spread evenly over the document (first and
     last included): service manuals keep their schematics at the end, so "the first
-    N pages" would mostly be text."""
+    N pages" would mostly be text. Page numbers (1-based) in skip are not rendered."""
     pages_dir.mkdir(parents=True, exist_ok=True)
 
     if source.suffix.lower() == PDF_SUFFIX:
@@ -66,6 +68,8 @@ def prepare_document(source: Path, pages_dir: Path, dpi: int, max_pages: int = 0
             else:
                 indices = sorted({round(i * (total - 1) / (max_pages - 1)) for i in range(max_pages)})
             for index in indices:
+                if index + 1 in skip:
+                    continue
                 page = pdf[index]
                 width_pt, height_pt = page.get_size()
                 image = page.render(scale=dpi / 72).to_pil()

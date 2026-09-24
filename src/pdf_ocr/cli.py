@@ -55,6 +55,11 @@ def main():
         "--max-pages", type=int, default=30,
         help="Pages per PDF, spread evenly over the document (default: 30, 0 = all)"
     )
+    ingest.add_argument(
+        "--refill", action="store_true",
+        help="Also add the pages --max-pages now selects to already-ingested PDFs "
+        "(pages deleted by hand earlier are not brought back)",
+    )
 
     crawl = commands.add_parser(
         "crawl",
@@ -100,11 +105,18 @@ def main():
         from pdf_ocr.detect import training_paths
 
         sources_dir, unlabeled_dir = training_paths(args.dataset)
+        # A folder inside the dataset's sources/ keeps its full prefix (manual__...);
+        # anything outside is its own root, as before
+        scan = Path(args.sources).resolve() if args.sources else None
+        inside = scan is not None and scan.is_relative_to(sources_dir.resolve())
         summary = ingest_step.run(
-            args.sources or sources_dir, unlabeled_dir, dpi=args.dpi, max_pages=args.max_pages
+            sources_dir.resolve() if inside else (scan or sources_dir), unlabeled_dir,
+            dpi=args.dpi, max_pages=args.max_pages, refill=args.refill,
+            only=scan if inside else None,
         )
         print(
             f"\nIngested {summary['ingested']} file(s) -> {summary['pages']} page(s) in {unlabeled_dir}"
+            f"\nRefilled {summary['refilled']} already-ingested file(s)"
             f"\nSkipped {summary['already_ingested']} already-ingested file(s)"
         )
 

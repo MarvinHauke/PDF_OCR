@@ -310,6 +310,8 @@ training_data/unlabeled/             rendered pages, not yet processed
 1. **Ingest.** `uv run pdf-ocr ingest` renders every PDF under `sources/` and copies images
    into `unlabeled/` as `<source path>__<name>-pNNN.png`. Each file is recorded by hash in
    `training_data/ingest_manifest.jsonl`, so re-running only processes new files.
+   `--refill` adds the pages a larger `--max-pages` now selects to already-ingested PDFs;
+   pages you deleted by hand stay deleted. `pdf-ocr ingest sources/manual` only scans that folder.
 2. **Autolabel.** `autolabel.py` decides per *image*. An image goes to `train/` only if every
    box on it is accepted. Otherwise it goes to review, with the non-rejected boxes pre-drawn.
    Pages without any detection go to review too, so schematics the model missed get labeled.

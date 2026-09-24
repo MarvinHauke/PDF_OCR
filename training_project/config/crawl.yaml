@@ -89,8 +89,10 @@ wikimedia_blocks:
 
 archive_org:
   dataset: pages # full documents -> page dataset
-  queries:
+  queries: # searched in order; --limit counts across all queries
     - '"service manual" AND (synthesizer OR synth) AND mediatype:texts'
+    # Broad query: round 4 got 7 of 10 hits from the CIA reading room (mostly negatives)
+    - '"schematic" AND (amplifier OR "guitar effect" OR organ OR "tape echo") AND mediatype:texts'
 
 kicad_github:
   dataset: subcircuits # full schematic sheets, many blocks per sheet
