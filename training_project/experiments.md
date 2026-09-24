@@ -104,6 +104,23 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
 - Reading: renders are learned well; the gap is symbol *style* (DIN, EAGLE ground) and photo
   quality. Next: pre-label the 145 real crops and correct them (B3), more symbol styles.
 
+### 2026-09-24 · Import round 2 (service manuals) and `run6`
+- `pdf-ocr crawl archive_org --limit 10` → `ingest --max-pages 8` (pages now spread evenly over
+  each manual) → 76 pages; `run5` pre-labeled, 2 auto-accepted, 74 reviewed in Label Studio:
+  34 with figures (32 schematic, 8 block_diagram, 22 pcb boxes), 41 without.
+- Data: **141 train / 34 val** (48 / 18 figure-free). Boxes train: schematic 175,
+  block_diagram 13, pcb 38; val: schematic 16, block_diagram 2, pcb 8.
+- `run6`: same settings as `run5` (lr0 0.0014, 200 epochs, no early stop, best epoch 169).
+- Both on the new val set (34 images, 26 boxes):
+
+  | | all mAP50 | all mAP50-95 | schematic mAP50 | block_diagram | pcb | recall |
+  |---|---|---|---|---|---|---|
+  | `run5` | 0.642 | 0.428 | 0.672 | 0.543 | 0.712 | 0.59 |
+  | `run6` | **0.928** | **0.722** | **0.866** | 0.995 (2 boxes) | **0.923** | **0.77** |
+
+- Reading: more (and more varied) data is the biggest lever so far. Part of the gap is that
+  `run5` had never seen a service manual. Inference switched to `run6`.
+
 ## Backlog (ideas, not tried yet)
 
 Page model, one change per run (`run5` learning rate done, see above):
