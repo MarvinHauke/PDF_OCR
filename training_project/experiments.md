@@ -189,11 +189,42 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
   the suspect. Overall difference to run7 is within noise at 40 boxes. Inference stays `run7`;
   `run10` (round-5 data, 300 epochs, patience 100) decides on the larger val set (87 images).
 
+### 2026-09-25 · Import round 6 (`run10` still training)
+- Sources: 8 more archive.org synth/organ service manuals (8 pages each) and 27 Wikimedia
+  Commons block diagrams (`wikimedia_blocks`; 11 more refused with HTTP 429, retry later).
+  Autolabel without auto-accept: 59 pages with `run7` boxes, 30 without detections, all reviewed.
+  87 of 89 tasks labeled (2 left open in Label Studio).
+- Data: **423 train / 106 val**. Boxes train: schematic 309, block_diagram 105, pcb 117 (169 empty
+  pages); val: 27, 26, 18 (55 empty).
+- `run10` (started before this import) trains on 355/87; its comparison with `run7` uses the
+  round-5 val set (list in `backup_2026-09-25_before_import6/val_images_run10.txt`).
+
+### 2026-09-25 · `run10` (round-5 data, 300 epochs, patience 100)
+- 355 train / 87 val, same settings as `run9`. Ran all 300 epochs (no early stop), best epoch
+  **244**; new bests kept coming as the learning rate decayed (133 → 172 → 188 → 223 → 244), so a
+  patience of 50 would have stopped it around 183 with mAP50 ~0.66. 9.9 h wall clock for
+  ~3.3 h of epochs (~40 s each): the Mac apparently slept despite `caffeinate -i`.
+- Best checkpoints on the round-5 val set (87 images, 55 boxes), `.val()` on CPU, mAP50 per class:
+
+  | | all mAP50 | all mAP50-95 | schematic | block_diagram | pcb | P | R |
+  |---|---|---|---|---|---|---|---|
+  | `run7` | 0.600 | 0.446 | 0.691 | 0.450 | 0.659 | **0.71** | 0.59 |
+  | `run9` (ep 152) | 0.547 | 0.376 | 0.690 | 0.423 | 0.528 | 0.42 | 0.64 |
+  | `run10` | **0.723** | **0.537** | **0.835** | **0.608** | **0.727** | 0.61 | **0.71** |
+
+- Unseen documents (the 19 round-6 val images, 16 boxes -- very noisy): `run7` 0.710 / 0.662,
+  `run10` 0.734 / 0.589 (mAP50 / mAP50-95); `run10` better on schematics (0.85 vs 0.68), worse on
+  the Wikimedia-style block diagrams (0.44 vs 0.54) that neither model was trained on.
+- Reading: `run10` is clearly better on the main comparison (+0.12 mAP50, better on every class,
+  higher recall, somewhat lower precision). `run9` falling to 0.547 on this set suggests it was fit
+  to the older material; the round-5 pages were what mattered.
+
 ## Backlog (ideas, not tried yet)
 
 Next up:
-- **`run10`** on 355/87 (started automatically after run9), compare with `run7` on the new val
-  set; check round-4 pcb labels (run8/run9 both weak on pcb).
+- **Switch inference to `run10`?** (user decision), then **`run11`** on 423/106 (round 6 adds the
+  Wikimedia block diagrams); ≥ 300 epochs, since run10 was still improving at epoch 244.
+- Check round-4 pcb labels (run8/run9 both weak on pcb; run10 recovered to 0.73).
 - **Label check of round 4:** run8's biggest errors on val, consistency of block_diagram vs
   schematic on the new pages (CIA documents, Roland manuals).
 
