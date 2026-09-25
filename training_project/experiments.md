@@ -172,13 +172,28 @@ Runs live in `training_data/runs/<name>/` (gitignored): `results.csv`, `args.yam
   and was resumed from `last.pt` via ultralytics directly: `train.py`'s auto-resume never
   triggers, because `is_run_complete()` counts any existing weights file as finished
   (fixed 2026-09-25: complete = last.pt stripped by ultralytics; resume always from last.pt).
-- Compare `run7`/`run8`/`run9` on the round-4 val set (list in
-  `backup_2026-09-24_before_import5/val_images_run9.txt`), then `run10` on the round-5 data.
+- `run9` result: early-stopped at 252 (215 epochs trained after the resume, 2.0 h), best epoch
+  **152** -- run8's early stop at 115 (best 65) was indeed premature. Best checkpoints of all
+  runs on the same round-4 val set (70 images, 40 boxes; list in
+  `backup_2026-09-24_before_import5/val_images_run9.txt`), `.val()` on CPU, mAP50 per class:
+
+  | | all mAP50 | all mAP50-95 | schematic | block_diagram | pcb | P | R |
+  |---|---|---|---|---|---|---|---|
+  | `run6` | 0.574 | 0.445 | **0.779** | 0.267 | 0.678 | 0.71 | 0.50 |
+  | `run7` | **0.638** | **0.462** | 0.741 | 0.478 | **0.695** | **0.86** | 0.54 |
+  | `run8` | 0.566 | 0.415 | 0.699 | 0.483 | 0.517 | 0.52 | **0.60** |
+  | `run9` | 0.622 | 0.430 | 0.751 | **0.587** | 0.527 | 0.73 | 0.48 |
+
+- Reading: longer training fixed most of run8's gap (same data, 0.566 -> 0.622) and gave the best
+  block_diagram score, but pcb stays far below run7 (0.53 vs 0.70) -- the round-4 pcb labels are
+  the suspect. Overall difference to run7 is within noise at 40 boxes. Inference stays `run7`;
+  `run10` (round-5 data, 300 epochs, patience 100) decides on the larger val set (87 images).
 
 ## Backlog (ideas, not tried yet)
 
 Next up:
-- **Finish `run9`** and compare as above; then **`run10`** on 355/87.
+- **`run10`** on 355/87 (started automatically after run9), compare with `run7` on the new val
+  set; check round-4 pcb labels (run8/run9 both weak on pcb).
 - **Label check of round 4:** run8's biggest errors on val, consistency of block_diagram vs
   schematic on the new pages (CIA documents, Roland manuals).
 
