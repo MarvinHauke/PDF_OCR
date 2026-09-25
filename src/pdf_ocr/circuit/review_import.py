@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pdf_ocr.circuit.graph import CircuitGraph
+from pdf_ocr.circuit.patterns import RANK
 
 VERDICTS = ("correct", "wrong")
 UNLABELED = "unlabeled"  # type of a group created in KiCanvas without a kind
@@ -95,6 +96,9 @@ def merge_review(export: dict, result: dict, gold: dict | None, source_name: str
         if not group.get("kind"):
             print(f"  {group.get('id')}: no kind given, imported as {UNLABELED!r} "
                   "(fix in the gold file, or copy the group in KiCanvas and name it)")
+        elif group["kind"] not in RANK:
+            print(f"  {group.get('id')}: unknown kind {group['kind']!r} (typo?) -- it can never "
+                  "match an analysis result in --evaluate")
         entry = {"type": group.get("kind") or UNLABELED, "components": sorted(group_refs(group))}
         unknown = [r for r in entry["components"] if r not in result["components"]]
         if unknown:

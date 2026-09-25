@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 
 from pdf_ocr.circuit.kicad_sch import children, parse_sexpr
+from pdf_ocr.circuit.patterns import RANK
 from pdf_ocr.circuit.review_import import is_confirmed, key
 
 
@@ -58,8 +59,9 @@ def to_symbol_groups(result: dict, gold: dict | None = None) -> dict:
         if confirmed:
             group["review"] = "correct"
         groups.append(group)
+    # kinds: the pattern library's vocabulary, for autocomplete when groups are added in KiCanvas
     return {"version": 1, "title": result["circuit"], "source": "analysis", "reviewed": False,
-            "groups": groups, "parts": parts}
+            "kinds": sorted(RANK), "groups": groups, "parts": parts}
 
 
 # -- schematic sources --------------------------------------------------------------

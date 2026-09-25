@@ -28,6 +28,7 @@ def test_analysis_groups():
     assert child["parent"] == "push_pull#1"
     assert child["description"] == ["source follower", "or switch"]
     assert data["parts"]["R1"] == {"kind": "resistor", "value": "10k"}
+    assert "decoupling_network" in data["kinds"] and data["kinds"] == sorted(data["kinds"])
 
 
 def test_gold_prefills_matches_and_appends_hand_added_entries():

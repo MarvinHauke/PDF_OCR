@@ -140,3 +140,10 @@ def test_groups_created_in_kicanvas_become_hand_added_entries():
     page = to_symbol_groups(RESULT, gold)  # next round: shown as gold#n, marked correct
     extras = [g for g in page["groups"] if g["id"].startswith("gold#")]
     assert [(g["kind"], g["review"]) for g in extras] == [("push_pull", "correct"), ("unlabeled", "correct")]
+
+
+def test_unknown_kind_warns(capsys):
+    export = exported()
+    export["groups"].append({"id": "new#1", "refs": ["R1", "R2"], "kind": "volt_divider", "review": "correct"})
+    merge_review(export, RESULT, None, "x.json")
+    assert "unknown kind 'volt_divider'" in capsys.readouterr().out
