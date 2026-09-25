@@ -66,8 +66,25 @@ def test_decoupling_cap_and_rc_lowpass():
     g = build(("C1", C, {"1": "+5V", "2": "GND"}),
               ("R1", R, {"1": "IN", "2": "OUT"}), ("C2", C, {"1": "OUT", "2": "GND"}),
               load("IN"), load("OUT", "J2"))
-    assert ("decoupling_cap", frozenset({"C1"})) in top(g)
+    assert ("decoupling_network", frozenset({"C1"})) in top(g)
     assert ("rc_lowpass", frozenset({"R1", "C2"})) in top(g)
+    [cap] = [m for m in find_subcircuits(g) if m.type == "decoupling_cap"]
+    assert cap.units == ["C1"] and cap.part_of == "decoupling_network#1"
+
+
+def test_decoupling_networks_group_caps_per_rail():
+    CP = ("Device", "C_Polarized")
+    g = build(("C1", C, {"1": "+12V", "2": "GND"}), ("C2", C, {"1": "+12V", "2": "GND"}),
+              ("C3", CP, {"1": "+12V", "2": "GND"}), ("C4", C, {"1": "-12V", "2": "GND"}),
+              ("C5", C, {"1": "SIG", "2": "GND"}), load("SIG"))
+    for ref, value in (("C1", "100n"), ("C2", "100n"), ("C3", "10u"), ("C4", "100n")):
+        g.units[ref].value = value
+    nets = {frozenset(m.units): m for m in find_subcircuits(g) if m.type == "decoupling_network"}
+    assert set(nets) == {frozenset({"C1", "C2", "C3"}), frozenset({"C4"})}  # C5: not between rails
+    assert nets[frozenset({"C1", "C2", "C3"})].notes == ["2× 100n, 1× 10u"]
+    children = {m.units[0]: m.part_of for m in find_subcircuits(g) if m.type == "decoupling_cap"}
+    assert children["C1"] == children["C3"] != children["C4"]
+    assert all(parent.startswith("decoupling_network#") for parent in children.values())
 
 
 # -- 555 ------------------------------------------------------------------------

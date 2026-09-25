@@ -11,6 +11,7 @@ Matches whose reading depends on context get `ambiguous: true` -- input for a
 later arbitration step (Jev) and for review.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 from itertools import combinations
 
@@ -31,6 +32,7 @@ RANK = {
     "push_pull": 3.5,
     "current_mirror": 3, "differential_pair": 3, "emitter_follower": 3,
     "rc_lowpass": 2, "rc_highpass": 2, "voltage_divider": 2,
+    "decoupling_network": 1.5,
     "decoupling_cap": 1,
 }
 
@@ -92,6 +94,26 @@ def decoupling_caps(g: CircuitGraph) -> list[Match]:
         nets = g.two_terminal(u)
         if nets and {n in g.ground for n in nets} == {True, False} and all(g.is_rail(n) for n in nets):
             out.append(Match("decoupling_cap", [u.id], list(nets)))
+    return out
+
+
+def decoupling_networks(g: CircuitGraph) -> list[Match]:
+    """All decoupling caps of one supply rail as a network (bulk and ceramic together).
+
+    The netlist can't tell which cap sits next to which IC -- every cap between
+    +12V and GND is on the same two nets -- so the rail is the grouping it supports.
+    The single caps become children of their network (part_of, lower rank)."""
+    by_rail: dict[str, list[Match]] = {}
+    for m in decoupling_caps(g):
+        rail = next(n for n in m.nets if n not in g.ground)
+        by_rail.setdefault(rail, []).append(m)
+    out = []
+    for rail, caps in sorted(by_rail.items()):
+        units = sorted(u for m in caps for u in m.units)
+        grounds = sorted({n for m in caps for n in m.nets if n in g.ground})
+        values = Counter(g.units[u].value or "?" for u in units)
+        summary = ", ".join(f"{n}× {v}" for v, n in sorted(values.items(), key=lambda x: (-x[1], x[0])))
+        out.append(Match("decoupling_network", units, [rail, *grounds], notes=[summary]))
     return out
 
 
@@ -382,7 +404,7 @@ def timers_555(g: CircuitGraph) -> list[Match]:
 
 
 PATTERNS = [timers_555, opamp_stages, regulators, rectifier_bridges, transistor_pairs, followers,
-            rc_filters, voltage_dividers, decoupling_caps]
+            rc_filters, voltage_dividers, decoupling_networks, decoupling_caps]
 
 
 def find_subcircuits(g: CircuitGraph) -> list[Match]:

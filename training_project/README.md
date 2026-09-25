@@ -437,6 +437,8 @@ without boxes and the ML backend returns no pre-labels: the first round is manua
 (`src/pdf_ocr/circuit/`): components are classified from their symbol library and part name,
 multi-unit op-amps are split into units, and each pattern is an explicit rule (e.g. a current
 mirror = two same-type transistors with shared bases and emitters, one diode-connected).
+Decoupling capacitors are grouped per supply rail into a `decoupling_network` (the netlist
+can't tell which cap belongs to which IC), with the single `decoupling_cap`s as its children.
 
 ```bash
 # All crawled netlists → output/circuits/<project>.circuit.json
