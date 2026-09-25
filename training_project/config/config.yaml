@@ -15,7 +15,7 @@ training:
   workers: 0 # Set to 0 for MPS to avoid multiprocessing issues
   device: "mps" # Apple Silicon Metal Performance Shaders
   patience: 50
-  save_period: 10
+  save_period: -1 # only best.pt + last.pt; epochN.pt every 10 epochs cost ~15 MB each (2.7 GB for 12 runs)
 
   # MPS-specific optimizations
   amp: true # Automatic Mixed Precision - helps with MPS performance
