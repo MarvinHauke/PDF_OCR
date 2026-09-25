@@ -110,16 +110,48 @@ Subcircuits are **graph patterns, not shapes**: a voltage divider or current mir
 by how parts are connected, and the same topology is drawn in many ways. So subcircuits are
 found by pattern matching on a circuit graph, not by a YOLO subcircuit detector.
 
+**Inference chain.** Solid = in place, dashed = missing. The KiCad path produces the same
+graph as the image path, so everything after "circuit graph" is shared.
+
+```mermaid
+flowchart TD
+    pdf[PDF page / image] --> page["page model (YOLO)<br/>schematic · block_diagram · pcb"]
+    page --> crop[schematic crop]
+    crop --> sym["symbol model (YOLO)<br/>resistor, capacitor, opamp, junction_dot, …"]
+    crop -.-> ocr["OCR<br/>refs, values, net labels"]
+    crop -.-> wires["wire detection (M3)<br/>wires, junctions → nets"]
+    sym -.-> cgraph
+    ocr -.-> cgraph
+    wires -.-> cgraph
+    kicad["KiCad project<br/>(netlist = exact graph)"] --> cgraph
+    cgraph["circuit graph<br/>units · nets · pin roles"] --> rules["rules (pattern library)<br/>candidates, part_of, ambiguous"]
+    rules -.-> verifier["verifier / GNN<br/>scores candidates"]
+    rules --> result[subcircuits]
+    verifier -.-> result
+    result -.-> llm["Jev + LLM (M4)<br/>arbitration, explanation"]
 ```
-page (PDF/image)
- └─ stage 1: page model (YOLO)          schematic / block_diagram / pcb
-     └─ schematic crop
-         ├─ stage 2a: symbol model (YOLO)   resistor, capacitor, bjt, mosfet, opamp, junction_dot, …
-         ├─ stage 2b: OCR                   refs + values (R3, 10k)
-         └─ stage 2c: connectivity          wires, junctions → nets
-             └─ circuit graph ─ pattern matcher ─ Jev arbitration ─ LLM explanation
-KiCad projects: the netlist is the true graph and the schematic gives exact symbol boxes
+
+**Training loops.** Two independent loops that meet only at the graph format: the YOLO models
+never see a graph, the graph model never sees pixels.
+
+```mermaid
+flowchart LR
+    subgraph images["image models (YOLO)"]
+        crawl[crawler + own manuals] --> autolabel[autolabel] --> ls[Label Studio review] --> train_pages[page model]
+        renders[KiCad renders] --> symlabels[symbol labels, auto] --> train_sym[symbol model]
+        renders -.-> wirelabels[wire masks, auto] -.-> train_wires[wire model]
+    end
+    subgraph graphs["graph models"]
+        netlists[KiCad netlists] --> analysis[rules] --> kc[KiCanvas review] --> gold[gold files]
+        kc --> gds[graph dataset]
+        gold --> evaluate["--evaluate → rule fixes"]
+        gds -.-> train_gnn[verifier / GNN]
+    end
 ```
+
+Graphs from images will be noisier than netlist graphs (a missed wire, a part detected as the
+wrong type), so the graph model is trained on exact KiCad graphs with deliberate corruption
+(dropped edges, swapped types) before it is used on graphs extracted from PDFs.
 
 - [x] **M1 – pattern library on KiCad netlists** (`src/pdf_ocr/circuit/`, `pdf-ocr circuit`):
       netlist → graph → patterns (voltage divider, RC filters, decoupling, current mirror,
@@ -130,8 +162,10 @@ KiCad projects: the netlist is the true graph and the schematic gives exact symb
       (`scripts/kicad_symbol_labels.py`), first model trained. Next: measure on real crops
       (scans, book photos), close the domain gap, more classes (jfet, transformer, crystal,
       switch, relay, connector), OCR for refs/values.
-- [ ] **M3 – connectivity extraction** from images: clean KiCad renders first, measured against
-      the true netlist; scans and photos afterwards.
+- [ ] **M3 – wire detection / connectivity** from images, the missing link between the YOLO models
+      and the circuit graph. Ground truth comes free from KiCad projects (wires, junctions, labels,
+      pins in `.kicad_sch`); classical extractor on clean renders first, measured against the true
+      netlist, then scans and photos. Plan: [`wire_detection.md`](wire_detection.md).
 - [ ] **M4 – Jev + LLM:** Jev arbitrates `ambiguous` matches with context (e.g. a
       differential pair with one grounded base in a VCF is an exponential converter), the LLM
       explains the structured result.
